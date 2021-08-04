@@ -157,12 +157,16 @@ h6 {
   list-style-type: lower-alpha;
 }
 
-.franklin-content th,
-td {
+.franklin-content th {
   font-size: var(--small);
   padding: 10px;
   border: 1px solid black;
 }
+
+.franklin-content td {
+  font-size: var(--small);
+  padding: 10px;
+  border: 1px solid black;
 
 .franklin-content blockquote {
   background: var(--block-background);
