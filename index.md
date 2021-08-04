@@ -23,3 +23,7 @@
 ## Publications
 
 * \biblabel{moses20}{Moses, Churavy 2020} **Moses** and **Churavy**, [Instead of Rewriting Foreign Code for Machine Learning, Automatically Synthesize Fast Gradients](https://proceedings.neurips.cc/paper/2020/file/9332c513ef44b682e9347822c2e457ac-Paper.pdf), NeuroIPS 2020.
+
+## Recent notes
+
+{{recentnotes}}
