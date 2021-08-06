@@ -1,4 +1,4 @@
-@def title = "BPFTrace & Julia -- Part 1"
+@def title = "BPFTrace & Julia: An introduction to UProbes"
 @def hascode = true
 @def date = Date(2021, 8, 04)
 @def rss = "A short introduction to bpftrace and using it with Julia"
