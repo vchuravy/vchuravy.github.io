@@ -18,14 +18,20 @@ The table below is taken from the `bpftrace` man page:
 | static  | tracepoints | USDT* probes |
 | dynamic | kprobes     | uprobes      |
 
+
 *USDT = user-level statically defined tracing
 
 I will focus on userland for now, since that is the most
 useful feature for understanding applications, like Julia.
+The difference between *static* and *dynamic* comes down to whether
+the applications is compiled with particular tracepoints, which are static
+or whether we are dynamically instrumenting functions in the application.
 
 The big selling point of BPFTrace is that it is lightweight and introduces next to no overhead until tracing is enabled, as well as being able to turn on tracing on a program that is already running.
 
 ## Probing functions using `uprobes`
+
+In this first exploration we will use dynamic probes called `uprobes` on function entries.
 
 Locate the library directory where `libjulia-internal.so` is located.
 
