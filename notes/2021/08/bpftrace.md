@@ -14,7 +14,7 @@ the kernel and applications. This note is written from a Linux perspective, but 
 The table below is taken from the `bpftrace` man page:
 
 |         | kernel      | userland     |
-|---------|-------------|--------------|
+| :-----: | :---------: | :----------: |
 | static  | tracepoints | USDT* probes |
 | dynamic | kprobes     | uprobes      |
 
