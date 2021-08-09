@@ -40,10 +40,10 @@
 <h2 id="probing_functions_using_uprobes"><a href="#probing_functions_using_uprobes" class="header-anchor">Probing functions using <code>uprobes</code></a></h2>
 <p>In this first exploration we will use dynamic probes called <code>uprobes</code> on function entries.</p>
 <p>Locate the library directory where <code>libjulia-internal.so</code> is located.</p>
-<pre><code class="julia-repl hljs"><span class="hljs-meta">julia&gt;</span><span class="language-julia"> realpath(joinpath(Sys.BINDIR, Base.LIBDIR, <span class="hljs-string">&quot;julia&quot;</span>))
-</span>&quot;/usr/lib/julia&quot;</code></pre>
+<pre><code class="language-julia-repl">julia&gt; realpath&#40;joinpath&#40;Sys.BINDIR, Base.LIBDIR, &quot;julia&quot;&#41;&#41;
+&quot;/usr/lib/julia&quot;</code></pre>
 <p>Using <code>nm</code> we can list all of the exported runtime functions of Julia.</p>
-<pre><code class="bash hljs">nm -D /usr/lib/julia/libjulia-internal.so</code></pre>
+<pre><code class="language-bash">nm -D /usr/lib/julia/libjulia-internal.so</code></pre>
 <p>All of these functions can be instrumented using a <code>uprobe</code>.</p>
 <p>There are two kinds of UProbes.</p>
 <ol>
@@ -53,7 +53,7 @@
 </li>
 </ol>
 <p>As an example we can look for GC related functions:</p>
-<pre><code class="bash hljs">nm -D /usr/lib/julia/libjulia-internal.so | grep jl_gc_
+<pre><code class="language-bash">nm -D /usr/lib/julia/libjulia-internal.so | grep jl_gc_
 0000000000015215 T jl_gc_add_finalizer
 0000000000015221 T jl_gc_add_finalizer_th
 000000000001522d T jl_gc_add_ptr_finalizer
@@ -67,7 +67,7 @@
 000000000001528d T jl_gc_big_alloc
 ...</code></pre>
 <p>an alternative way to find all valid <code>uprobe</code> tracepoints is to use <code>bpftrace</code>:</p>
-<pre><code class="julia hljs">sudo bpftrace -l &#x27;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_*&#x27;
+<pre><code class="language-julia">sudo bpftrace -l &#39;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_*&#39;
 uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_add_finalizer
 uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_add_finalizer_th
 uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_add_ptr_finalizer
@@ -86,178 +86,178 @@ uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_big_alloc
 <div class="admonition-body">To understand what each function does it is best to search for the name in the <code>src</code> directory of Julia.</div></div>
 <p>For now I want to understand a Julia programs allocation behaviour better, and I know that <code>jl_gc_alloc</code> is the primary allocation function.</p>
 <p>Looking at the Julia source code:</p>
-<pre><code class="c hljs"><span class="hljs-type">jl_value_t</span>* <span class="hljs-title function_">jl_gc_alloc</span><span class="hljs-params">(<span class="hljs-type">jl_ptls_t</span> ptls, <span class="hljs-type">size_t</span> sz, <span class="hljs-type">void</span> *ty)</span></code></pre>
+<pre><code class="language-c">jl_value_t* jl_gc_alloc&#40;jl_ptls_t ptls, size_t sz, void *ty&#41;</code></pre>
 <p>I see that it takes the current <code>ptls</code>, a size <code>sz</code> and a <code>void* ty</code> which is the type of the Julia object to allocate. For now the only interesting argument is <code>sz</code>.</p>
 <p>The function <code>allocator</code> is going to run forever and allocate an array of size <code>N</code> bytes.</p>
-<pre><code class="julia hljs"><span class="hljs-keyword">function</span> allocator(range)
-    <span class="hljs-keyword">while</span> <span class="hljs-literal">true</span>
-        N = rand(range)
-        buf = <span class="hljs-built_in">Array</span>{<span class="hljs-built_in">UInt8</span>}(<span class="hljs-literal">undef</span>, N)
-    <span class="hljs-keyword">end</span>
-<span class="hljs-keyword">end</span></code></pre>
+<pre><code class="language-julia">function allocator&#40;range&#41;
+    while true
+        N &#61; rand&#40;range&#41;
+        buf &#61; Array&#123;UInt8&#125;&#40;undef, N&#41;
+    end
+end</code></pre>
 <p>In one terminal I am goint to run my Julia process with:</p>
-<pre><code class="bash hljs">julia -L allocator.jl -e <span class="hljs-string">&quot;allocator(64:128)&quot;</span></code></pre>
+<pre><code class="language-bash">julia -L allocator.jl -e &quot;allocator&#40;64:128&#41;&quot;</code></pre>
 <p>where <code>allocator.jl</code> contains the function from above.</p>
 <p>Now <code>bpftrace</code> has it&#39;s own language inspired by <code>dtrace</code> and we want to install a <code>uprobe</code> on the function <code>jl_gc_alloc</code>.</p>
 <div class="admonition-note"><div class="admonition-title">Note  Paths to shared library</div>
 <div class="admonition-body">As far as I know <code>bpftrace</code> expects the path to the library &#40;or the pid of     the process to instrument&#41;. It accepts either a relative or absolute path.</div></div>
 <p>For simple bpftrace programs you can write them directly as part of the command line:</p>
-<pre><code class="bash hljs">➜  ~ sudo bpftrace -e <span class="hljs-string">&quot;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_alloc { @[pid] = hist(arg1); }&quot;</span>
+<pre><code class="language-bash">➜  ~ sudo bpftrace -e &quot;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_alloc &#123; @&#91;pid&#93; &#61; hist&#40;arg1&#41;; &#125;&quot;
 Attaching 1 probe...
 c^C
 
-@[2955269]:
-[16, 32)             995 |@@@@@@@@@@                                          |
-[32, 64)             448 |@@@@                                                |
-[64, 128)           1936 |@@@@@@@@@@@@@@@@@@@@                                |
-[128, 256)          4891 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[256, 512)            10 |                                                    |
-[512, 1K)            226 |@@                                                  |
-[1K, 2K)               2 |                                                    |
-[2K, 4K)               2 |</code></pre>
+@&#91;2955269&#93;:
+&#91;16, 32&#41;             995 |@@@@@@@@@@                                          |
+&#91;32, 64&#41;             448 |@@@@                                                |
+&#91;64, 128&#41;           1936 |@@@@@@@@@@@@@@@@@@@@                                |
+&#91;128, 256&#41;          4891 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+&#91;256, 512&#41;            10 |                                                    |
+&#91;512, 1K&#41;            226 |@@                                                  |
+&#91;1K, 2K&#41;               2 |                                                    |
+&#91;2K, 4K&#41;               2 |</code></pre>
 <p>Or you can write a scrip, take the snippet below and write it to a file called <code>trace_gc_alloc.bt</code>.</p>
-<pre><code class="julia hljs"><span class="hljs-comment">#!/usr/bin/env bpftrace</span>
+<pre><code class="language-julia">#&#33;/usr/bin/env bpftrace
 
 BEGIN
-{
-    printf(<span class="hljs-string">&quot;Tracing Julia GC Allocations... Hit Ctrl-C to end.\n&quot;</span>);
-}
+&#123;
+    printf&#40;&quot;Tracing Julia GC Allocations... Hit Ctrl-C to end.\n&quot;&#41;;
+&#125;
 
 uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_alloc
-{
-    <span class="hljs-meta">@allocations</span>[pid] = hist(arg1);
-}</code></pre>
+&#123;
+    @allocations&#91;pid&#93; &#61; hist&#40;arg1&#41;;
+&#125;</code></pre>
 <p>and then execute <code>bpftrace</code>:</p>
-<pre><code class="bash hljs">➜  ~ sudo bpftrace trace_gc_alloc.bt
+<pre><code class="language-bash">➜  ~ sudo bpftrace trace_gc_alloc.bt
 Attaching 2 probes...
 Tracing Julia GC Allocations... Hit Ctrl-C to end.
 ^C
 
-@allocations[2955269]:
-[16, 32)             995 |@@@@@@@@@@@@@                                       |
-[32, 64)             448 |@@@@@@                                              |
-[64, 128)           1926 |@@@@@@@@@@@@@@@@@@@@@@@@@@                          |
-[128, 256)          3711 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
-[256, 512)             8 |                                                    |
-[512, 1K)            226 |@@@                                                 |
-[1K, 2K)               2 |                                                    |
-[2K, 4K)               2 |                                                    |</code></pre>
+@allocations&#91;2955269&#93;:
+&#91;16, 32&#41;             995 |@@@@@@@@@@@@@                                       |
+&#91;32, 64&#41;             448 |@@@@@@                                              |
+&#91;64, 128&#41;           1926 |@@@@@@@@@@@@@@@@@@@@@@@@@@                          |
+&#91;128, 256&#41;          3711 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@|
+&#91;256, 512&#41;             8 |                                                    |
+&#91;512, 1K&#41;            226 |@@@                                                 |
+&#91;1K, 2K&#41;               2 |                                                    |
+&#91;2K, 4K&#41;               2 |                                                    |</code></pre>
 <h3 id="a_note_on_ustack"><a href="#a_note_on_ustack" class="header-anchor">A note on <code>ustack</code></a></h3>
 <p><code>bpftrace</code> exposes the option to collect the stack of the user application when a probe fires.</p>
-<pre><code class="julia hljs">sudo bpftrace -e <span class="hljs-string">&quot;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_alloc { @[ustack] = count(); }&quot;</span>
-[sudo] password <span class="hljs-keyword">for</span> vchuravy:
-Attaching <span class="hljs-number">1</span> probe...
+<pre><code class="language-julia">sudo bpftrace -e &quot;uprobe:/usr/lib/julia/libjulia-internal.so:jl_gc_alloc &#123; @&#91;ustack&#93; &#61; count&#40;&#41;; &#125;&quot;
+&#91;sudo&#93; password for vchuravy:
+Attaching 1 probe...
 ^C
 
-@[
-    jl_gc_alloc+<span class="hljs-number">0</span>
-    japi1_Dict_16786.clone_1+<span class="hljs-number">159</span>
-    <span class="hljs-number">0x7f993e3a9e32</span>
-    <span class="hljs-number">0x7f993e3aa04a</span>
-    <span class="hljs-number">0x7f993e40832d</span>
-    <span class="hljs-number">0x7f993e38600e</span>
-    <span class="hljs-number">0x7f993e3877b9</span>
-    <span class="hljs-number">0x7f993e38a02c</span>
-    <span class="hljs-number">0x7f993e38a326</span>
-    do_call+<span class="hljs-number">166</span>
-    eval_value+<span class="hljs-number">1135</span>
-    eval_body+<span class="hljs-number">930</span>
-    jl_interpret_toplevel_thunk+<span class="hljs-number">232</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">738</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">1325</span>
-    jl_toplevel_eval_in+<span class="hljs-number">170</span>
-    japi1_eval_user_input_18975.clone_1.clone_2+<span class="hljs-number">1074</span>
-    japi1_repl_backend_loop_17983.clone_1.clone_2+<span class="hljs-number">936</span>
-    japi1_start_repl_backend_19196.clone_1+<span class="hljs-number">127</span>
-    japi1_run_repl_18018.clone_1+<span class="hljs-number">25</span>
-    julia_YY<span class="hljs-number">.874_41531</span>.clone_1+<span class="hljs-number">1574</span>
-    jfptr_YY<span class="hljs-number">.874_41532</span>.clone_1+<span class="hljs-number">9</span>
-    jl_f__call_latest+<span class="hljs-number">71</span>
-    julia_run_main_repl_32598.clone_1.clone_2+<span class="hljs-number">2249</span>
-    julia_exec_options_29068.clone_1.clone_2+<span class="hljs-number">23966</span>
-    julia__start_34288.clone_1+<span class="hljs-number">655</span>
-]: <span class="hljs-number">1</span>
-@[
-    jl_gc_alloc+<span class="hljs-number">0</span>
-    <span class="hljs-number">0x7f993e40850f</span>
-    <span class="hljs-number">0x7f993e38600e</span>
-    <span class="hljs-number">0x7f993e3877b9</span>
-    <span class="hljs-number">0x7f993e38a02c</span>
-    <span class="hljs-number">0x7f993e38a326</span>
-    do_call+<span class="hljs-number">166</span>
-    eval_value+<span class="hljs-number">1135</span>
-    eval_body+<span class="hljs-number">930</span>
-    jl_interpret_toplevel_thunk+<span class="hljs-number">232</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">738</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">1325</span>
-    jl_toplevel_eval_in+<span class="hljs-number">170</span>
-    japi1_eval_user_input_18975.clone_1.clone_2+<span class="hljs-number">1074</span>
-    japi1_repl_backend_loop_17983.clone_1.clone_2+<span class="hljs-number">936</span>
-    japi1_start_repl_backend_19196.clone_1+<span class="hljs-number">127</span>
-    japi1_run_repl_18018.clone_1+<span class="hljs-number">25</span>
-    julia_YY<span class="hljs-number">.874_41531</span>.clone_1+<span class="hljs-number">1574</span>
-    jfptr_YY<span class="hljs-number">.874_41532</span>.clone_1+<span class="hljs-number">9</span>
-    jl_f__call_latest+<span class="hljs-number">71</span>
-    julia_run_main_repl_32598.clone_1.clone_2+<span class="hljs-number">2249</span>
-    julia_exec_options_29068.clone_1.clone_2+<span class="hljs-number">23966</span>
-    julia__start_34288.clone_1+<span class="hljs-number">655</span>
-]: <span class="hljs-number">1</span>
-@[
-    jl_gc_alloc+<span class="hljs-number">0</span>
-    julia_YY.readdirYY<span class="hljs-number">.22_35563</span>.clone_1.clone_2+<span class="hljs-number">316</span>
-    julia_tryf_35829.clone_1.clone_2+<span class="hljs-number">367</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">185</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia_YY<span class="hljs-number">.25_35391</span>.clone_1+<span class="hljs-number">124</span>
-    start_task+<span class="hljs-number">235</span>
-]: <span class="hljs-number">1</span>
-@[
-    jl_gc_alloc+<span class="hljs-number">0</span>
-    jl_array_grow_end+<span class="hljs-number">299</span>
-    julia_sortNOT._46922.clone_1.clone_2+<span class="hljs-number">164</span>
-    julia_YY.readdirYY<span class="hljs-number">.22_35563</span>.clone_1.clone_2+<span class="hljs-number">339</span>
-    julia_tryf_35829.clone_1.clone_2+<span class="hljs-number">367</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">185</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">985</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">985</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">985</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia__walkdir_35550.clone_1.clone_2+<span class="hljs-number">985</span>
-    jfptr__walkdir_35551.clone_1+<span class="hljs-number">17</span>
-    julia_YY<span class="hljs-number">.25_35391</span>.clone_1+<span class="hljs-number">124</span>
-    start_task+<span class="hljs-number">235</span>
-]: <span class="hljs-number">1</span>
-@[
-    jl_gc_alloc+<span class="hljs-number">0</span>
-    <span class="hljs-number">0x7f993e3ab245</span>
-    <span class="hljs-number">0x7f993e3ab649</span>
-    jl_apply_generic+<span class="hljs-number">506</span>
-    <span class="hljs-number">0x7f993e4083cc</span>
-    <span class="hljs-number">0x7f993e38600e</span>
-    <span class="hljs-number">0x7f993e3877b9</span>
-    <span class="hljs-number">0x7f993e38a02c</span>
-    <span class="hljs-number">0x7f993e38a326</span>
-    do_call+<span class="hljs-number">166</span>
-    eval_value+<span class="hljs-number">1135</span>
-    eval_body+<span class="hljs-number">930</span>
-    jl_interpret_toplevel_thunk+<span class="hljs-number">232</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">738</span>
-    jl_toplevel_eval_flex+<span class="hljs-number">1325</span>
-    jl_toplevel_eval_in+<span class="hljs-number">170</span>
-    japi1_eval_user_input_18975.clone_1.clone_2+<span class="hljs-number">1074</span>
-    japi1_repl_backend_loop_17983.clone_1.clone_2+<span class="hljs-number">936</span>
-    japi1_start_repl_backend_19196.clone_1+<span class="hljs-number">127</span>
-    japi1_run_repl_18018.clone_1+<span class="hljs-number">25</span>
-    julia_YY<span class="hljs-number">.874_41531</span>.clone_1+<span class="hljs-number">1574</span>
-    jfptr_YY<span class="hljs-number">.874_41532</span>.clone_1+<span class="hljs-number">9</span>
-    jl_f__call_latest+<span class="hljs-number">71</span>
-    julia_run_main_repl_32598.clone_1.clone_2+<span class="hljs-number">2249</span>
-    julia_exec_options_29068.clone_1.clone_2+<span class="hljs-number">23966</span>
-    julia__start_34288.clone_1+<span class="hljs-number">655</span>
-]: <span class="hljs-number">1</span>
+@&#91;
+    jl_gc_alloc&#43;0
+    japi1_Dict_16786.clone_1&#43;159
+    0x7f993e3a9e32
+    0x7f993e3aa04a
+    0x7f993e40832d
+    0x7f993e38600e
+    0x7f993e3877b9
+    0x7f993e38a02c
+    0x7f993e38a326
+    do_call&#43;166
+    eval_value&#43;1135
+    eval_body&#43;930
+    jl_interpret_toplevel_thunk&#43;232
+    jl_toplevel_eval_flex&#43;738
+    jl_toplevel_eval_flex&#43;1325
+    jl_toplevel_eval_in&#43;170
+    japi1_eval_user_input_18975.clone_1.clone_2&#43;1074
+    japi1_repl_backend_loop_17983.clone_1.clone_2&#43;936
+    japi1_start_repl_backend_19196.clone_1&#43;127
+    japi1_run_repl_18018.clone_1&#43;25
+    julia_YY.874_41531.clone_1&#43;1574
+    jfptr_YY.874_41532.clone_1&#43;9
+    jl_f__call_latest&#43;71
+    julia_run_main_repl_32598.clone_1.clone_2&#43;2249
+    julia_exec_options_29068.clone_1.clone_2&#43;23966
+    julia__start_34288.clone_1&#43;655
+&#93;: 1
+@&#91;
+    jl_gc_alloc&#43;0
+    0x7f993e40850f
+    0x7f993e38600e
+    0x7f993e3877b9
+    0x7f993e38a02c
+    0x7f993e38a326
+    do_call&#43;166
+    eval_value&#43;1135
+    eval_body&#43;930
+    jl_interpret_toplevel_thunk&#43;232
+    jl_toplevel_eval_flex&#43;738
+    jl_toplevel_eval_flex&#43;1325
+    jl_toplevel_eval_in&#43;170
+    japi1_eval_user_input_18975.clone_1.clone_2&#43;1074
+    japi1_repl_backend_loop_17983.clone_1.clone_2&#43;936
+    japi1_start_repl_backend_19196.clone_1&#43;127
+    japi1_run_repl_18018.clone_1&#43;25
+    julia_YY.874_41531.clone_1&#43;1574
+    jfptr_YY.874_41532.clone_1&#43;9
+    jl_f__call_latest&#43;71
+    julia_run_main_repl_32598.clone_1.clone_2&#43;2249
+    julia_exec_options_29068.clone_1.clone_2&#43;23966
+    julia__start_34288.clone_1&#43;655
+&#93;: 1
+@&#91;
+    jl_gc_alloc&#43;0
+    julia_YY.readdirYY.22_35563.clone_1.clone_2&#43;316
+    julia_tryf_35829.clone_1.clone_2&#43;367
+    julia__walkdir_35550.clone_1.clone_2&#43;185
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia_YY.25_35391.clone_1&#43;124
+    start_task&#43;235
+&#93;: 1
+@&#91;
+    jl_gc_alloc&#43;0
+    jl_array_grow_end&#43;299
+    julia_sortNOT._46922.clone_1.clone_2&#43;164
+    julia_YY.readdirYY.22_35563.clone_1.clone_2&#43;339
+    julia_tryf_35829.clone_1.clone_2&#43;367
+    julia__walkdir_35550.clone_1.clone_2&#43;185
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia__walkdir_35550.clone_1.clone_2&#43;985
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia__walkdir_35550.clone_1.clone_2&#43;985
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia__walkdir_35550.clone_1.clone_2&#43;985
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia__walkdir_35550.clone_1.clone_2&#43;985
+    jfptr__walkdir_35551.clone_1&#43;17
+    julia_YY.25_35391.clone_1&#43;124
+    start_task&#43;235
+&#93;: 1
+@&#91;
+    jl_gc_alloc&#43;0
+    0x7f993e3ab245
+    0x7f993e3ab649
+    jl_apply_generic&#43;506
+    0x7f993e4083cc
+    0x7f993e38600e
+    0x7f993e3877b9
+    0x7f993e38a02c
+    0x7f993e38a326
+    do_call&#43;166
+    eval_value&#43;1135
+    eval_body&#43;930
+    jl_interpret_toplevel_thunk&#43;232
+    jl_toplevel_eval_flex&#43;738
+    jl_toplevel_eval_flex&#43;1325
+    jl_toplevel_eval_in&#43;170
+    japi1_eval_user_input_18975.clone_1.clone_2&#43;1074
+    japi1_repl_backend_loop_17983.clone_1.clone_2&#43;936
+    japi1_start_repl_backend_19196.clone_1&#43;127
+    japi1_run_repl_18018.clone_1&#43;25
+    julia_YY.874_41531.clone_1&#43;1574
+    jfptr_YY.874_41532.clone_1&#43;9
+    jl_f__call_latest&#43;71
+    julia_run_main_repl_32598.clone_1.clone_2&#43;2249
+    julia_exec_options_29068.clone_1.clone_2&#43;23966
+    julia__start_34288.clone_1&#43;655
+&#93;: 1
 ...</code></pre>
 <p>As you can see there a function pointers in the stack trace whose names are not resolved, these a JIT-compiled user functions, and BPFTrace currently doesn&#39;t know how to symbolize them. There is an <a href="https://dxuuu.xyz/stack-symbolize.html">initial design proposal</a> that might mitigate that in the future.</p>
 <h2 id="coming_up_next"><a href="#coming_up_next" class="header-anchor">Coming up next</a></h2>
@@ -272,8 +272,8 @@ Attaching <span class="hljs-number">1</span> probe...
     </div> <!-- end of id=layout -->
     
     
-        
-
+        <script src="/libs/highlight/highlight.pack.js"></script>
+<script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});</script>
 
     
   </body>
