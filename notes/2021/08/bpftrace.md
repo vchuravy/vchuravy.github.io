@@ -24,7 +24,7 @@ The table below is taken from the `bpftrace` man page:
 I will focus on userland for now, since that is the most
 useful feature for understanding applications, like Julia.
 The difference between *static* and *dynamic* comes down to whether
-the applications is compiled with particular tracepoints, which are static
+the application is compiled with particular tracepoints, which are static,
 or whether we are dynamically instrumenting functions in the application.
 
 The big selling point of BPFTrace is that it is lightweight and introduces next to no overhead until tracing is enabled, as well as being able to turn on tracing on a program that is already running.
@@ -98,7 +98,7 @@ want to instrument.
     To understand what each function does it is best to search for the name in the `src` directory of Julia.
 }
 
-For now I want to understand a Julia programs allocation behaviour better,
+For now I want to understand a Julia program's allocation behaviour better,
 and I know that `jl_gc_alloc` is the primary allocation function.
 
 Looking at the Julia source code:
@@ -120,14 +120,14 @@ function allocator(range)
 end
 ```
 
-In one terminal I am goint to run my Julia process with:
+In one terminal I am going to run my Julia process with:
 
 ```bash
 julia -L allocator.jl -e "allocator(64:128)"
 ```
 where `allocator.jl` contains the function from above.
 
-Now `bpftrace` has it's own language inspired by `dtrace` and we want to install
+Now `bpftrace` has its own language inspired by `dtrace` and we want to install
 a `uprobe` on the function `jl_gc_alloc`.
 
 \note{Paths to shared library}{
@@ -312,8 +312,8 @@ Attaching 1 probe...
 ...
 ```
 
-As you can see there a function pointers in the stack trace whose names are not
-resolved, these a JIT-compiled user functions, and BPFTrace currently doesn't know
+As you can see, there are function pointers in the stack trace whose names are not
+resolved. These are JIT-compiled user functions, and BPFTrace currently doesn't know
 how to symbolize them. There is an [initial design proposal](https://dxuuu.xyz/stack-symbolize.html)
 that might mitigate that in the future.
 
