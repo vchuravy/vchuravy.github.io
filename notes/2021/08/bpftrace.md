@@ -24,7 +24,7 @@ The table below is taken from the `bpftrace` man page:
 I will focus on userland for now, since that is the most
 useful feature for understanding applications, like Julia.
 The difference between *static* and *dynamic* comes down to whether
-the application is compiled with particular tracepoints, which are static,
+the application is compiled with explicit tracepoints, which are static,
 or whether we are dynamically instrumenting functions in the application.
 
 The big selling point of BPFTrace is that it is lightweight and introduces next to no overhead until tracing is enabled, as well as being able to turn on tracing on a program that is already running.
@@ -98,8 +98,8 @@ want to instrument.
     To understand what each function does it is best to search for the name in the `src` directory of Julia.
 }
 
-For now I want to understand a Julia program's allocation behaviour better,
-and I know that `jl_gc_alloc` is the primary allocation function.
+Let us assume that we want to understand a Julia program's allocation behaviour better,
+and we know that `jl_gc_alloc` is the primary allocation function.
 
 Looking at the Julia source code:
 
@@ -127,13 +127,22 @@ julia -L allocator.jl -e "allocator(64:128)"
 ```
 where `allocator.jl` contains the function from above.
 
-Now `bpftrace` has its own language inspired by `dtrace` and we want to install
-a `uprobe` on the function `jl_gc_alloc`.
+
 
 \note{Paths to shared library}{
     As far as I know `bpftrace` expects the path to the library (or the pid of
     the process to instrument). It accepts either a relative or absolute path.
 }
+
+\note{Automatic resolution of shared library paths}{
+    After https://github.com/iovisor/bpftrace/pull/1971 `bpftrace` now supports automatic resolution of library paths and you no longer need to
+    provide absolute or relative paths. This note was written when that was still the case and we will use relative paths throughout.
+}
+
+`bpftrace` has its own language inspired by `dtrace`. In the following example we install a `uprobe` on the function `jl_gc_alloc`.
+
+`bpftrace` will instrument all running processes on the OS that are using
+a certain library. Instead of using a library you can also use a PID.
 
 For simple bpftrace programs you can write them directly as part of the command line:
 
@@ -153,7 +162,7 @@ c^C
 [2K, 4K)               2 |
 ```
 
-Or you can write a scrip, take the snippet below and write it to a file called `trace_gc_alloc.bt`.
+Or you can write a script, take the snippet below and write it to a file called `trace_gc_alloc.bt`.
 
 ```
 #!/usr/bin/env bpftrace
@@ -322,3 +331,8 @@ that might mitigate that in the future.
 I am planning to write at least two more notes on using BPFTrace and Julia, the
 next will focus on how to use the USDT tracepoints added in Julia 1.8 and the one
 after that on how to use UProbes.jl to instrument Julia applications themselves.
+
+### Acknowledgments
+
+Thanks to Nathan Daly for reading early versions of this note and
+giving great feedback.
