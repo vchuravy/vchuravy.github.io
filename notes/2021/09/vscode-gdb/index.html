@@ -1,0 +1,97 @@
+<!doctype html> <html lang=en > <meta charset=UTF-8 > <meta name=viewport  content="width=device-width, initial-scale=1"> <link rel=stylesheet  href="/libs/highlight/github.min.css"> <link rel=stylesheet  href="/css/franklin.css"> <link rel=stylesheet  href="/css/tufte.css"> <link rel=stylesheet  href="/css/latex.css"> <link rel=stylesheet  href="/css/admonition.css"> <link rel=stylesheet  href="/css/adjust.css"> <link rel=icon  href="/assets/favicon.png"> <title>Using GDB & VSCode to debug Julia code on Windows</title> <div id=layout > <div id=menu > <ul> <li><a href="/">Home</a> <li><a href="/notes">Notes</a> </ul> </div> <div id=main > <div class=franklin-content ><h1 id=using_gdb_vscode_to_debug_julia_code_on_windows ><a href="#using_gdb_vscode_to_debug_julia_code_on_windows" class=header-anchor >Using GDB &amp; VSCode to debug Julia code on Windows</a></h1> <div class=franklin-toc ><ol><li><a href="#setup">Setup</a><li><a href="#first_test">First test</a><li><a href="#configuring_vscode">Configuring VSCode</a><ol><li><a href="#getting_the_julia_source_code">Getting the Julia source code</a><li><a href="#launchjson"><code>launch.json</code></a></ol></ol></div> <p>One of the most annoying tasks for me is debugging code on Windows. I have been using Linux as my primary system for a long time now, and no of my customary tools &#40;most notably <a href="https://rr-project.org/">rr</a>&#41; work or work reliably.</p> <p>Nonetheless I regularly need to debug Windows specific issues that crop up when either working on the Julia compiler or other tools like <a href="https://enzyme.mit.edu">Enzyme</a>. As it often does it this adventure started out with CI only failing on Windows, and to make matters worse it looked like an ABI mismatch...</p> <p>In any case I wanted to setup a better environment for me to debug in, instead of grasping in the dark.</p> <div class=admonition-note ><div class=admonition-title >Note</div> <div class=admonition-body >While this content is written for Windows most of it outside the setup should work under Linux or MacOS as well.</div></div> <h2 id=setup ><a href="#setup" class=header-anchor >Setup</a></h2> <p>I noticed that my preferred editor of choice &#40;VSCode&#41; had <a href="https://code.visualstudio.com/docs/cpp/config-mingw">setup instructions</a> for Mingw-w64 that promised GDB integration.</p> <p>After <a href="https://www.msys2.org/">downloading MSYS2</a> and using the MSYS2 console to install the mingw-w64 toolchain:</p> <pre><code class="sh hljs">pacman -Syu
+pacman -Su
+pacman -S --needed base-devel mingw-w64-x86_64-toolchain</code></pre> <p>and adding <code>C:\msys64\mingw64\bin</code> to my <code>PATH</code> environment variable. It seemed that I had GDB available.</p> <h2 id=first_test ><a href="#first_test" class=header-anchor >First test</a></h2> <pre><code class="sh hljs">gdb --args julia -g2 -e <span class=hljs-string >&quot;ccall(:jl_breakpoint, Cvoid, (Any,), :success)&quot;</span></code></pre>
+<p>The command above start <code>julia</code> under <code>gdb</code> with extended debug information turned on <code>-g2</code> and then executes the statement <code>ccall&#40;:jl_breakpoint, Cvoid, &#40;Any,&#41;, :success&#41;</code> which is a foreign call to a Julia runtime function called <code>jl_breakpoint</code> that we can use to set inspect variables from within GDB.</p>
+<p>This and other useful information you can find in the <a href="https://docs.julialang.org/en/v1/devdocs/debuggingtips/">Julia Developer Documentation</a>.</p>
+<p>Running the command will drop you into the GDB REPL, where we want to set a breakpoint &#40;<code>b</code> shorthand&#41; and then run &#40;<code>r</code> shortand&#41; the program.</p>
+<pre><code class="julia hljs">(gdb) b jl_breakpoint
+<span class=hljs-built_in >Function</span> <span class=hljs-string >&quot;jl_breakpoint&quot;</span> not defined.
+Make breakpoint pending on future shared library load? (y or [n]) y
+Breakpoint <span class=hljs-number >1</span> (jl_breakpoint) pending.
+(gdb) r
+Starting program: C:\Users\vchuravy\AppData\Local\Programs\Julia-<span class=hljs-number >1.6</span><span class=hljs-number >.2</span>\bin\julia.exe -g2 -e <span class=hljs-string >&quot;ccall(:jl_breakpoint, Cvoid, (Any,), :success)&quot;</span></code></pre>
+<p>Shortly thereafter we will hit our breakpoint:</p>
+<pre><code class="julia hljs">Thread <span class=hljs-number >1</span> hit Breakpoint <span class=hljs-number >1</span>, <span class=hljs-number >0x0000000002687730</span> <span class=hljs-keyword >in</span> jl_breakpoint (v=<span class=hljs-number >0xe6d3d38</span>) at /cygdrive/c/buildbot/worker/package_win64/build/cli/trampolines/trampolines_x86_64.S:<span class=hljs-number >19</span>
+warning: Source file is more recent than executable.
+(gdb)</code></pre>
+<p>If you print a backtrace &#40;<code>bt</code> shorthand&#41; from this location you will notice that the stacktrace is incomplete:</p>
+<pre><code class="julia hljs">(gdb) bt
+<span class=hljs-comment >#0  0x00000000026c7730 in jl_breakpoint (v=0xe723d38) at /cygdrive/c/buildbot/worker/package_win64/build/cli/trampolines/trampolines_x86_64.S:19</span>
+<span class=hljs-comment >#1  0x0000000061090899 in ?? ()</span>
+Backtrace stopped: previous frame inner to this frame (corrupt stack?)</code></pre>
+<p>This is because GDB is unable to find Julia&#39;s debug information. We will need to set the environment variable <code>ENABLE_GDBLISTENER&#61;1</code> to inform Julia that it needs to notify GDB of the debug information.</p>
+<pre><code class="julia hljs">$env:ENABLE_GDBLISTENER = <span class=hljs-number >1</span></code></pre>
+<p>Retracing our steps we now get:</p>
+<pre><code class="julia hljs">(gdb) bt
+<span class=hljs-comment >#0  0x0000000002657730 in jl_breakpoint (v=0x1d583d38) at /cygdrive/c/buildbot/worker/package_win64/build/cli/trampolines/trampolines_x86_64.S:19</span>
+<span class=hljs-comment >#1  0x0000000061090899 in japi1_top-level scope_13 () at none:1</span>
+<span class=hljs-comment >#2  0x00000000026ff5c0 in jl_toplevel_eval_flex (m=m@entry=0xf5a4eb0 &lt;jl_system_image_data+1601136&gt;, e=&lt;optimized out&gt;, fast=&lt;optimized out&gt;, fast@entry=1, expanded=expanded@entry=0)</span>
+    at /cygdrive/c/buildbot/worker/package_win64/build/src/toplevel.c:<span class=hljs-number >871</span>
+<span class=hljs-comment >#3  0x00000000026ffdc2 in jl_toplevel_eval_flex (m=0xf5a4eb0 &lt;jl_system_image_data+1601136&gt;, m@entry=0xc813f10, e=0x192328b0, e@entry=0x7ffc07040003, fast=fast@entry=1, expanded=expanded@entry=0)</span>
+    at /cygdrive/c/buildbot/worker/package_win64/build/src/toplevel.c:<span class=hljs-number >825</span>
+<span class=hljs-comment >#4  0x0000000002700d10 in jl_toplevel_eval (v=0x7ffc07040003, m=0xc813f10) at /cygdrive/c/buildbot/worker/package_win64/build/cli/trampolines/trampolines_x86_64.S:19</span>
+<span class=hljs-comment >#5  jl_toplevel_eval_in (m=0xc813f10, ex=0x7ffc07040003) at /cygdrive/c/buildbot/worker/package_win64/build/src/toplevel.c:929</span>
+<span class=hljs-comment >#6  0x000000000f242f34 in eval () at boot.jl:360</span>
+<span class=hljs-comment >#7  julia_exec_options_25396 () at client.jl:261</span>
+<span class=hljs-comment >#8  0x000000000ed7a9a0 in julia__start_39744 () at client.jl:485</span>
+<span class=hljs-comment >#9  0x000000000ed7ab2f in jfptr.start_39745.clone_1 () at client.jl:288</span></code></pre>
+<p>Which is much more helpful. Calling the function <code>jl_</code> we can print out the Julia value of <code>v</code>.</p>
+<pre><code class="julia hljs">(gdb) c jl_(v)
+:success
+Value can&#x27;t be converted to integer.</code></pre>
+<h2 id=configuring_vscode ><a href="#configuring_vscode" class=header-anchor >Configuring VSCode</a></h2>
+<h3 id=getting_the_julia_source_code ><a href="#getting_the_julia_source_code" class=header-anchor >Getting the Julia source code</a></h3>
+<p>In order to be able to step through the Julia runtime it helps to have the source code locally available. Make sure to </p>
+<pre><code class="bash hljs">git <span class=hljs-built_in >clone</span> https://github.com/JuliaLang/julia
+git -C julia checkout v1.6.2</code></pre>
+<p>Make sure that you checkout the tag of your installed Julia version.</p>
+<div class=admonition-note ><div class=admonition-title >Note</div>
+<div class=admonition-body >Currently the pre-built Julia doesn&#39;t have debug symbols available and building Julia on     windows is a whole different adventure.</div></div>
+<h3 id=launchjson ><a href="#launchjson" class=header-anchor ><code>launch.json</code></a></h3>
+<p>My <code>launch.json</code> looks like this</p>
+<pre><code class="json hljs"><span class=hljs-punctuation >{</span>
+    <span class=hljs-comment >// Use IntelliSense to learn about possible attributes.</span>
+    <span class=hljs-comment >// Hover to view descriptions of existing attributes.</span>
+    <span class=hljs-comment >// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387</span>
+    <span class=hljs-attr >&quot;version&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;0.2.0&quot;</span><span class=hljs-punctuation >,</span>
+    <span class=hljs-attr >&quot;configurations&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >[</span>
+        <span class=hljs-punctuation >{</span>
+            <span class=hljs-attr >&quot;name&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;(gdb) Launch&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;type&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;cppdbg&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;request&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;launch&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;program&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;C:\\Users\\vchuravy\\AppData\\Local\\Programs\\Julia-1.6.2\\bin\\julia.exe&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;args&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >[</span><span class=hljs-string >&quot;--project=.&quot;</span><span class=hljs-punctuation >,</span> <span class=hljs-string >&quot;${file}&quot;</span><span class=hljs-punctuation >]</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;stopAtEntry&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-keyword >false</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;cwd&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;${workspaceFolder}&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;environment&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >[</span>
+                <span class=hljs-punctuation >{</span><span class=hljs-attr >&quot;name&quot;</span><span class=hljs-punctuation >:</span><span class=hljs-string >&quot;ENABLE_GDBLISTENER&quot;</span><span class=hljs-punctuation >,</span> <span class=hljs-attr >&quot;value&quot;</span><span class=hljs-punctuation >:</span><span class=hljs-string >&quot;1&quot;</span><span class=hljs-punctuation >}</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-punctuation >]</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;externalConsole&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-keyword >false</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;MIMode&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;gdb&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;miDebuggerPath&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;gdb&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;setupCommands&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >[</span>
+                <span class=hljs-punctuation >{</span>
+                    <span class=hljs-attr >&quot;description&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;Enable pretty-printing for gdb&quot;</span><span class=hljs-punctuation >,</span>
+                    <span class=hljs-attr >&quot;text&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;-enable-pretty-printing&quot;</span><span class=hljs-punctuation >,</span>
+                    <span class=hljs-attr >&quot;ignoreFailures&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-keyword >true</span>
+                <span class=hljs-punctuation >}</span>
+            <span class=hljs-punctuation >]</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;symbolOptions&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >{</span>
+                <span class=hljs-attr >&quot;searchMicrosoftSymbolServer&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-keyword >true</span><span class=hljs-punctuation >,</span>
+                <span class=hljs-attr >&quot;cachePath&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;%TEMP%\\symcache&quot;</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-punctuation >}</span><span class=hljs-punctuation >,</span>
+            <span class=hljs-attr >&quot;sourceFileMap&quot;</span><span class=hljs-punctuation >:</span> <span class=hljs-punctuation >{</span>
+                <span class=hljs-attr >&quot;/cygdrive/c/buildbot/worker/package_win64/build/src&quot;</span> <span class=hljs-punctuation >:</span> <span class=hljs-string >&quot;C:\\Users\\vchuravy\\dev\\julia\\src&quot;</span>
+            <span class=hljs-punctuation >}</span>
+        <span class=hljs-punctuation >}</span><span class=hljs-punctuation >,</span>
+    <span class=hljs-punctuation >]</span>
+<span class=hljs-punctuation >}</span></code></pre>
+<p>The two important settings are <code>environment</code> to include the <code>ENABLE_GDBLISTENER</code> and the <code>sourceFileMap</code> that maps the paths on the buildserver to a local checkout.</p>
+<div class=page-foot >
+  <div class=copyright >
+    &copy; Valentin Churavy. Last modified: September 12, 2021. Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia programming language</a>.
+  </div>
+</div>
+</div>
+        </div> 
+    </div>

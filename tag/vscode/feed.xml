@@ -9,14 +9,14 @@
 
   <channel>
     <title>
-      <![CDATA[  Valentin Churavy&#39;s personal webpage  ]]>
+      <![CDATA[  {{fd2rss website_title}}  ]]>
     </title>
-    <link> https://vchuravy.dev/ </link>
+    <link> {{website_url}} </link>
     <description>
-      <![CDATA[  Valentin Churavy&#39;s personal webpage  ]]>
+      <![CDATA[  {{fd2rss website_description}}  ]]>
     </description>
     <atom:link
-      href="https://vchuravy.dev/feed.xml"
+      href="{{fd_rss_feed_url}}"
       rel="self"
       type="application/rss+xml" />
 
@@ -32,25 +32,6 @@
   </description>  
     
   <pubDate>Sun, 12 Sep 2021 00:00:00 +0000</pubDate>  
-  
-  
-  <atom:author>
-    <atom:name>Valentin Churavy</atom:name>
-  </atom:author>
-        
-</item>
-
-<item>
-  <title>
-    <![CDATA[  BPFTrace &amp; Julia: An introduction to UProbes  ]]>
-  </title>
-  <link> https://vchuravy.dev/notes/2021/08/bpftrace/index.html </link>
-  <guid> https://vchuravy.dev/notes/2021/08/bpftrace/index.html </guid>
-  <description>
-    <![CDATA[  A short introduction to bpftrace and using it with Julia  ]]>
-  </description>  
-    
-  <pubDate>Wed, 04 Aug 2021 00:00:00 +0000</pubDate>  
   
   
   <atom:author>
