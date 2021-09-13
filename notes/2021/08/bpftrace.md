@@ -336,3 +336,5 @@ after that on how to use UProbes.jl to instrument Julia applications themselves.
 
 Thanks to Nathan Daly for reading early versions of this note and
 giving great feedback.
+
+{{ addcomments }}
