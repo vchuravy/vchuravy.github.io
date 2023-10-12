@@ -33,7 +33,9 @@ jobs:
     - run: julia --project=. -e '
             import PlutoSliderServer
 
-            PlutoSliderServer.export_directory("talks";
+            PlutoSliderServer.export_directory(
+              "talks";
+              Export_output_dir="__site/talks",
               Export_cache_dir="pluto_state_cache",
               Export_baked_notebookfile=false,
               Export_create_index=false,
