@@ -1,5 +1,6 @@
 @def title = "Using GDB & VSCode to debug Julia code on Windows"
 @def hascode = true
+@def hascomments = true
 @def date = Date(2021, 9, 12)
 @def rss = "Debugging Julia code on Windows using VSCode and GDB "
 @def tags = ["debugging", "gdb", "julia", "vscode", "note"]
