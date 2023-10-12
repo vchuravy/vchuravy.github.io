@@ -3,31 +3,31 @@
 
 <url>
     <loc>https://vchuravy.dev/notes/index.html</loc>
-    <lastmod>2021-10-03</lastmod>
+    <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
 <url>
     <loc>https://vchuravy.dev/notes/2021/08/bpftrace/index.html</loc>
-    <lastmod>2021-10-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-</url>
-<url>
-    <loc>https://vchuravy.dev/404/index.html</loc>
-    <lastmod>2021-10-03</lastmod>
+    <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
 <url>
     <loc>https://vchuravy.dev/notes/2021/09/vscode-gdb/index.html</loc>
-    <lastmod>2021-10-03</lastmod>
+    <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
 <url>
     <loc>https://vchuravy.dev/index.html</loc>
-    <lastmod>2021-10-03</lastmod>
+    <lastmod>2023-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://vchuravy.dev/talks/going_fast_nowhere/</loc>
+    <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
