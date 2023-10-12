@@ -35,10 +35,8 @@ jobs:
 
             PlutoSliderServer.export_directory(
               "talks";
-              Export_output_dir="__site/talks",
               Export_cache_dir="pluto_state_cache",
               Export_baked_notebookfile=false,
-              Export_create_index=false,
             )'
     # NOTE
     #   The steps below ensure that NodeJS and Franklin are loaded then it
