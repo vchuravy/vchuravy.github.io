@@ -132,3 +132,28 @@ function hfun_addcomments()
     """
     return html_str
 end
+
+using JSON
+
+"""
+    {{talks}}
+
+Plug in the list of talks contained in the `/talks/` folder.
+"""
+function hfun_talks()
+    pluto_json = "talks/pluto_export.json"
+    if !isfile(pluto_json)
+        return ""
+    end
+    info = JSON.Parser.parsefile("talks/pluto_export.json")
+    notebooks = info["notebooks"]
+
+    io = IOBuffer()
+    for (name, data) in notebooks
+       title = data["frontmatter"]["title"]
+       clean_title = replace(title, "_" => " ")
+       write(io, "- [$clean_title](/talks/$title)")
+    end
+    r = Franklin.fd2html(String(take!(io)), internal=true)
+    return r
+end

@@ -1,5 +1,6 @@
 [deps]
 Franklin = "713c75ef-9fc9-4b05-94a9-213340da978e"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 NodeJS = "2bd173c7-0d6d-553b-b6af-13a54713934c"
 PlutoSliderServer = "2fc8631c-6f24-4c5b-bca7-cbb509c42db4"
 

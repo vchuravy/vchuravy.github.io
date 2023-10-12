@@ -1,0 +1,4 @@
+@def title = "Talks"
+
+{{talks}}
+
