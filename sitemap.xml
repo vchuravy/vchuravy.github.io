@@ -8,6 +8,12 @@
     <priority>0.5</priority>
 </url>
 <url>
+    <loc>https://vchuravy.dev/talks/index.html</loc>
+    <lastmod>2023-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://vchuravy.dev/notes/2021/08/bpftrace/index.html</loc>
     <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
@@ -21,6 +27,12 @@
 </url>
 <url>
     <loc>https://vchuravy.dev/index.html</loc>
+    <lastmod>2023-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://vchuravy.dev/talks/going_fast_nowhere/index/</loc>
     <lastmod>2023-10-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
