@@ -1,6 +1,17 @@
 ### A Pluto.jl notebook ###
 # v0.19.29
 
+#> [frontmatter]
+#> title = "Going fast nowhere"
+#> date = "2023-10-12"
+#> license = "MIT"
+#> description = "A talk about benchmarking and surprising subtilities"
+#> tags = ["talks", "benchmarking", "BenchmarkTools", "low-level", "julia"]
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
