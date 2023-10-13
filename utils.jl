@@ -152,7 +152,7 @@ function hfun_talks()
     for (name, data) in notebooks
        title = data["frontmatter"]["title"]
        clean_title = replace(title, "_" => " ")
-       write(io, "- [$clean_title](/talks/$title)")
+       write(io, "- [$clean_title](/talks/$title)\n")
     end
     r = Franklin.fd2html(String(take!(io)), internal=true)
     return r
