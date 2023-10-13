@@ -149,10 +149,11 @@ function hfun_talks()
     notebooks = info["notebooks"]
 
     io = IOBuffer()
-    for (name, data) in notebooks
+    for (file, data) in notebooks
+       dir = first(split(file, "."))
        title = data["frontmatter"]["title"]
        clean_title = replace(title, "_" => " ")
-       write(io, "- [$clean_title](/talks/$title)\n")
+       write(io, "- [$clean_title](/talks/$dir)\n")
     end
     r = Franklin.fd2html(String(take!(io)), internal=true)
     return r
