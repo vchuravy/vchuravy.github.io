@@ -528,6 +528,38 @@ Similarly in Julia tasks currently have a return value `fetch(task)`, is this so
 
 ### Concurrency vs may-happen-in-parallel
 
+Julia's tasks are concurrent. OpenCilk/Tapir expects tasks to have may-happen-in-parallel/Serial-projection-property.
+
+```julia
+ch = Channel() # unbuffered
+
+@sync begin
+    @spawn begin
+        put!(ch, 1)
+    end
+    @spawn begin
+        take!(ch)
+    end
+end
+```
+
+Under SPP it would be legal to remove all `@spawn`:
+
+```
+ch = Channel()
+put!(ch, 1)
+take!(ch)
+```
+
+And now you created a dead-lock.
+
+Why is this important? Without SPP it is hard to merge two tasks (as is required for coarsening parallel loops).
+
+From a language design perspective you are now introducing two very similar concepts,
+with a extremly subtle difference in meaning. 
+
+Could we prove that a Julia task need not be concurrent and could we automatically infer them to be may-happen-in-parallel?
+
 ## Next steps:
 
 ```julia
