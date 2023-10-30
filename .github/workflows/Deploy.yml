@@ -24,7 +24,7 @@ jobs:
     - name: Install Julia
       uses: julia-actions/setup-julia@v1
       with:
-        version: "1"
+        version: "1.10-nightly"
     - name: Cache Julia artifacts & such
       uses: julia-actions/cache@v1
       with:
