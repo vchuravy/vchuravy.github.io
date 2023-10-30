@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.29
+# v0.19.30
 
 #> [frontmatter]
 #> title = "Going fast nowhere"
@@ -33,6 +33,9 @@ begin
 	using Unitful
 	using PlutoUI
 end
+
+# ╔═╡ f133db40-461f-4a09-af14-c5d99ef6ce04
+html"<button onclick='present()'>Toggle presentation mode</button>"
 
 # ╔═╡ 1fe94954-965b-43be-ad90-3711f07bc25d
 md"""
@@ -683,6 +686,7 @@ version = "17.4.0+2"
 """
 
 # ╔═╡ Cell order:
+# ╟─f133db40-461f-4a09-af14-c5d99ef6ce04
 # ╠═2ae8a548-76e9-11ed-2045-d960f32fa458
 # ╟─1fe94954-965b-43be-ad90-3711f07bc25d
 # ╟─aae1c36f-681d-4a91-b46f-294411643b92

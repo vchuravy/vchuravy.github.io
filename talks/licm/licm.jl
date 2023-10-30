@@ -24,12 +24,18 @@ begin
 	import Core.Compiler
 end
 
+# ╔═╡ 279d08aa-ac9a-46d3-a8eb-8ea0ad6a4cf5
+versioninfo()
+
 # ╔═╡ 37c87261-b14d-41fa-a6dc-518f01c10bf1
 md"""
 # LICM
 
+!!! note
+    This notebook requires 1.10
+
 Developing a LICM pass for Julia's high-level IR.
-This notebook is walking-through performing manual LICM
+This notebook is walking-through performing LICM
 using Loops.jl
 
 On the function:
@@ -43,6 +49,9 @@ function f1(A, x)
     return acc
 end
 ```
+
+!!! note
+    Terminology used here is consistent with https://llvm.org/docs/LoopTerminology.html#terminology
 
 ### Acknowledgements :
 - Takafumi Arakaki's work:
@@ -65,6 +74,19 @@ function f1(A, x)
     end
     return acc
 end
+
+# ╔═╡ c19a3e6b-27ec-4661-b228-34cdff0e7ed4
+md"""
+### First steps
+
+Using `Base.code_ircode` we can optain the IR in the right format,
+after SSA conversion.
+
+IRCode contains a CFG and we can also construct a dom-tree from it.
+
+Using the dom-tree we can find loops in the IR itself
+
+"""
 
 # ╔═╡ 90a65de3-8bef-42e5-ab60-665279113cb6
 (ir, rt) = only(Base.code_ircode(
@@ -154,12 +176,6 @@ loops = Loops.construct_loopinfo(ir, domtree)
 # ╔═╡ 8247d1bd-b4a9-49dc-976d-7df4c7fdf503
 header, LI = first(loops)
 
-# ╔═╡ c6d04ad8-2845-49c2-af73-2018d2653129
-filter(BB->BB ∉ LI.blocks, ir.cfg.blocks[header].preds)
-
-# ╔═╡ e1c0a03e-6c57-4a12-97d8-622965fdfcd2
-
-
 # ╔═╡ 9b5e7ad5-526d-4ff8-a8ec-dc2ba734a2d4
 md"""
 ## Step 1: Insert pre-header
@@ -235,10 +251,11 @@ end
 
 # ╔═╡ 4b6bc13e-8d77-4705-87fb-3b4dbcda52a6
 md"""
-Move statement %13 into pre-header.
+Now we want to move the invariant statements into the pre-header.
 
-TODO:
-- Effect analysis
+An invariant statement is a statement that depends only statements outside the loop,
+or other invariant statements, and is EFFECT_FREE. It may throw which is why we move
+them to the pre-header.
 """
 
 # ╔═╡ 9eed2c82-27d0-48da-8bef-8fabc67a01f2
@@ -268,6 +285,8 @@ end
 
 function invariant_expr(ir, LI, invariant_stmts, stmt)
     invar = true
+	# Due to us being outside the compiler... Iteration over compiler structs
+	# doesn't work.
 	state = Core.Compiler.iterate(Core.Compiler.userefs(stmt))
 	while state !== nothing
 		useref, next  = state
@@ -327,19 +346,19 @@ We move the statement by inserting the copy of the original instruction and refe
 """
 
 # ╔═╡ Cell order:
+# ╠═279d08aa-ac9a-46d3-a8eb-8ea0ad6a4cf5
 # ╟─37c87261-b14d-41fa-a6dc-518f01c10bf1
 # ╟─650e532e-7686-11ee-0674-dd9416ef104e
 # ╟─12f7c5d6-5f26-4aa6-a4b5-830d51b66597
 # ╟─4ad1978c-3c95-4ab7-be67-a1fbba1d174f
 # ╟─fdeeb2d8-043b-4e14-8f6e-a365311f621a
 # ╠═2b28dea4-a53f-4391-9dad-21e754074c15
+# ╟─c19a3e6b-27ec-4661-b228-34cdff0e7ed4
 # ╠═90a65de3-8bef-42e5-ab60-665279113cb6
 # ╠═90cce8dc-5806-46ac-9611-70754a429bc7
 # ╠═48d67b63-3f3a-4dea-b19b-4ab67faf23c0
 # ╠═c43b82b6-c03a-48ee-9728-704687346226
 # ╠═8247d1bd-b4a9-49dc-976d-7df4c7fdf503
-# ╠═c6d04ad8-2845-49c2-af73-2018d2653129
-# ╠═e1c0a03e-6c57-4a12-97d8-622965fdfcd2
 # ╟─9b5e7ad5-526d-4ff8-a8ec-dc2ba734a2d4
 # ╠═982d9412-7af0-457c-a669-b1a2dca79249
 # ╟─09e695c1-1b44-4207-a045-9198b2e7988c
