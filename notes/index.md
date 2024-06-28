@@ -3,6 +3,8 @@
 Here you can find my notes and thoughts, mostly about technical stuff related to
 Julia.
 
+If you are into RSS you can subscribe to: `https://vchuravy.dev/feed.xml`
+
 \\
 
 ~~~

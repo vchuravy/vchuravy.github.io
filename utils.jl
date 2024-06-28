@@ -114,3 +114,47 @@ function hfun_recentnotes()
     end
     return String(take!(io))
 end
+
+"""
+    {{ addcomments }}
+
+Add a comment widget, managed by utterances <https://utteranc.es>.
+"""
+function hfun_addcomments()
+    html_str = """
+        <script src="https://utteranc.es/client.js"
+            repo="vchuravy/vchuravy.github.io"
+            issue-term="pathname"
+            theme="github-light"
+            crossorigin="anonymous"
+            async>
+        </script>
+    """
+    return html_str
+end
+
+using JSON
+
+"""
+    {{talks}}
+
+Plug in the list of talks contained in the `/talks/` folder.
+"""
+function hfun_talks()
+    pluto_json = "talks/pluto_export.json"
+    if !isfile(pluto_json)
+        return ""
+    end
+    info = JSON.Parser.parsefile("talks/pluto_export.json")
+    notebooks = info["notebooks"]
+
+    io = IOBuffer()
+    for (file, data) in notebooks
+       dir = first(split(file, "."))
+       title = data["frontmatter"]["title"]
+       clean_title = replace(title, "_" => " ")
+       write(io, "- [$clean_title](/talks/$dir)\n")
+    end
+    r = Franklin.fd2html(String(take!(io)), internal=true)
+    return r
+end
