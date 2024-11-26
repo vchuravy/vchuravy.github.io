@@ -2,8 +2,9 @@
 
 ## Who am I?
 
-* PhD Student in Computer Science @ MIT
+* PostDoc & RSE at JGU Mainz & University of Augsburg
 * Member of the [JuliaLab](https://julia.mit.edu) in CSAIL
+* PhD in Computer Science, Massachussetts Institute of Technology
 * BSc in Cognitive Science, University of Osnabruek
 * Contributor to Julia and LLVM
 * Co-maintainer of the [JuliaGPU](https://juliagpu.org) & JuliaParallel stack
