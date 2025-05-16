@@ -8,6 +8,7 @@ using InteractiveUtils
 begin
     using PlutoUI
     using CairoMakie, Enzyme, OrdinaryDiffEqTsit5, RecursiveArrayTools
+	using LinearOperators, Krylov
 	import Enzyme: Reverse
 end
 
@@ -100,12 +101,6 @@ function parameters_elastic_rope(N=3)
     return params, q0, qdot0, t0, tend
 end
 
-# ╔═╡ e748dd2b-d287-4a23-975b-798e4e267518
-p, q0, qdot0, t0, tend = parameters_elastic_rope(3)
-
-# ╔═╡ bb75a45d-c7ba-4d4e-80b0-6fcd123fc857
-lagrangian_elastic_rope(q0, qdot0, p)
-
 # ╔═╡ 2afe897c-b5a5-4d07-8fad-d3ea57ce68d4
 # function source_reference_elastic_rope(S, Q, p, t)
 #     # what the user would have to implement instead of lagrangian_elastic_rope
@@ -124,24 +119,131 @@ lagrangian_elastic_rope(q0, qdot0, p)
 # 	end
 # end
 
+# ╔═╡ c41f59d7-787c-4a1f-8b2d-f3b375c00a91
+md"""
+## Second Example: Celestial Mechanics
+
+"""
+
+# ╔═╡ dd3ab91a-1b0f-4c2f-98f1-f7d296653892
+function lagrangian_celestial_mechanics(q, qdot, params)
+    # the lagrangian for the celestial mechanics system, this is the function that the user will implement
+    # note that it just computes the scalar value of the lagrangian of the system
+	(;m, g) = params
+	N = length(q) ÷ 2
+	x = view(q, 1:N)
+	y = view(q, (N+1):2N)
+	u = view(qdot, 1:N)
+	v = view(qdot, (N+1):2N)
+	# (;x, y) = q
+	# (;u, v) = qdot
+	
+    Eₖ = 0.5 * sum(m .* (u.^2 .+ v.^2)) # kinetic energy is mass times velocity^2/2
+    # potential energy is the sum of the gravitational potentials of 
+    # all planets wrt all other planets
+    # the planet itself can be summed too, just use r/(r**2 + eps) as a division operator
+    Eₚ = 0.0
+    for i in 1:N
+        rq = (x .- x[i]).^2 .+ (y .- y[i]).^2
+        Eₚ -= 0.5 * g * m[i] * sum(m .* sqrt.(rq) ./ (rq .+ 1.0e-28))
+	end
+    return Eₖ - Eₚ # lagrangian = kinetic_energy - potential_energy
+end
+
+# ╔═╡ 4b19e471-6aba-4c9d-98ce-718a90d02e2f
+function parameters_celestial_mechanics(N=4)
+    # a helper to setup the parameters of the problem
+    N = min(N, 4)
+    # time domain
+    t0   = 0.0
+    tend = 1.0e1
+    # parameters
+    m = [1000.0, 100.0, 10.0, 1.0]
+    m = m[1:N]
+    g = 1.0
+    # initial condition
+    x0 = [0.0, 0.8, 3.7, 5.9]
+    y0 = [0.0, -0.1, -0.2, -0.3]
+    r0q = x0.^2 .+ y0.^2
+    v0 = sqrt.(m[1] .* g .* sqrt.(r0q) ./ (r0q .+ 1.0e-20))
+    u0 = [0.0, 0.4, 0.5, 0.6] .* v0
+    x0, y0, u0, v0 = x0[1:N], y0[1:N], u0[1:N], v0[1:N]
+    v0[1] = -sum(m .* v0)/m[1]
+    u0[1] = -sum(m .* u0)/m[1]
+	# q0 = NamedArrayPartition(; x = x0, y = y0)
+	# qdot0 = NamedArrayPartition(; u = u0, v = v0)
+	q0 = vcat(x0, y0)
+	qdot0 = vcat(u0, v0)
+	params = (;m, g)
+    return params, q0, qdot0, t0, tend
+end
+
+# ╔═╡ d41520f3-9e7e-4835-9c0a-0187e7fc17d8
+_, q0, _ = parameters_celestial_mechanics()
+
+# ╔═╡ 826f9ce1-dfde-4a0e-b91a-bd53ca646778
+# def source_reference_celestial_mechanics(t, Q, params):
+#     # what the user would have to implement instead of lagrangian_celestial_mechanics
+#     # to solve the ode (source==rhs of the ODE)
+#     N = len(Q)//4
+#     m, g = params[:N], params[-1]
+#     S = np.zeros(4*N)
+#     q, qdot = Q[:2*N], Q[2*N:]
+#     x, y = q[:N], q[N:]
+#     S[:2*N] = qdot
+#     for i in range(N):
+#         irtot = m/(((x - x[i])**2 + (y - y[i])**2)**1.5 + 1.0e-40)
+#         S[2*N+i] = g*np.sum((x - x[i])*irtot)
+#         S[3*N+i] = g*np.sum((y - y[i])*irtot)
+#     return S
+
+# ╔═╡ 07a1916d-fec3-404f-b9ae-1eb65c8e9e6e
+md"""
+## Machinery
+"""
+
+# ╔═╡ ce455b95-2b09-497e-8a99-4f1164d45d0f
+md"""
+We remember that we want to solve:
+
+$\frac{d\dot{q}}{dt} = H^{-1} \frac{dL}{dq}$
+
+First we need $\frac{dL}{dq}$ which we can get through automatic differentiation.
+Particularly efficent is in this case reverse mode.
+"""
+
 # ╔═╡ d2a6ae70-1759-4587-9f4f-2bd36909a6c2
 # Note on 1.11 there is currently an Enzyme bug with broadcasting
 # https://github.com/EnzymeAD/Enzyme.jl/issues/2397
 @static if VERSION < v"1.11"
 	function dLdq(L, q, qdot, p)
 		dq = Enzyme.make_zero(q)
-		autodiff(Reverse, Const(L), Active, Duplicated(q, dq), Const(qdot), Const(p))
+		autodiff(Reverse, Const(L), Active,
+				 Duplicated(q, dq), Const(qdot), Const(p))
 		dq
 	end
 else
-	error("Use Julia 1.10")
+	function dLdq(L, q, qdot, p)
+		dq = Enzyme.make_zero(q)
+			autodiff(Reverse, Const(L), Active,
+					 Duplicated(q, dq), 
+					 Duplicated(qdot, Enzyme.make_zero(qdot)),
+					 Duplicated(p, Enzyme.make_zero(p)))
+		dq
+	end
 end
 
-# ╔═╡ b6363338-08bd-459e-8148-7aef579026d3
-dLdq(lagrangian_elastic_rope, q0, qdot0, p)
+# ╔═╡ fabde49b-3e3d-42b2-85f2-3d33a6dfcaba
+md"""
+Secondly we need to solve $H^{-1}\frac{dL}{dq}$. $H$ is the Hessian and as such we want to do `H \ b` where $b = \frac{dL}{dq}$.
+
+- `manual_dldqdotqdot` is using finite-difference to take the 2nd derivative of $L$ w.r.t $\dot{q}$
+- `dLdqdotdqdot_explicit` uses automatic differentiation to perform forward-over-reverse mode 
+- `dLdqdotdqdot_matrix_free` constructs a matrix-free variant that can be used by `Krylov.jl` to solve `H\b`.
+"""
 
 # ╔═╡ b8a43d3a-c927-49c1-b2ee-eaa0db911c99
-function _dLdqdotdqdot(L, q, qdot, params, epsilon1=1.0e-4, epsilon2=1.0e-4)
+function manual_dLdqdotdqdot(L, q, qdot, params, epsilon1=1.0e-4, epsilon2=1.0e-4)
     # the lagrangian is a function of the lagrangian coordinates q 
     # and of the derivatives of the lagrangian coordinates qdot (treated
     # as independent variables
@@ -173,7 +275,7 @@ function _dLdqdotdqdot(L, q, qdot, params, epsilon1=1.0e-4, epsilon2=1.0e-4)
 end
 
 # ╔═╡ 8618e845-b62d-488d-b2b6-58dd228905dd
-function dLdqdotdqdot(L, q, qdot, p)
+function dLdqdotdqdot_explicit(L, q, qdot, p)
 	N = length(qdot)
 	v = Enzyme.make_zero(qdot)
 	w = similar(v)
@@ -187,11 +289,14 @@ function dLdqdotdqdot(L, q, qdot, p)
 	H
 end
 
-# ╔═╡ 67a1763f-cc01-4595-9727-0f31e8a14473
-_dLdqdotdqdot(lagrangian_elastic_rope, q0, qdot0, p)
-
-# ╔═╡ b4918378-7059-4e94-991b-68b09a760e73
-dLdqdotdqdot(lagrangian_elastic_rope, q0, qdot0, p) 
+# ╔═╡ f7220fe5-9497-4013-a4ae-b7604ef9c94e
+function dLdqdotdqdot_matrix_free(L, q, qdot, p)
+	N = length(qdot)
+	LinearOperator(eltype(qdot), N, N, false, false, 
+		(w, v) -> Enzyme.hvp!(w, Const(qdot->L(q, qdot, p)), qdot, v),
+		nothing, nothing
+	)
+end
 
 # ╔═╡ 672bcc28-b296-49a7-b44c-903edf5a51a8
 function source_from_lagrangian(L)
@@ -200,29 +305,32 @@ function source_from_lagrangian(L)
 		N = length(q)
 		S.q .= qdot # S[1:N] .= qdot
 		b = dLdq(L, q, qdot, p)
-		H = dLdqdotdqdot(L, q, qdot, p) # TODO: Use a LinearOperator here
-		S.qdot .= H \ b # S[(N+1):end] .= H \ b
+		H = dLdqdotdqdot_matrix_free(L, q, qdot, p)
+		# H = dLdqdotdqdot_explicit(L, q, qdot, p)
+		x, stats = gmres(H, b)
+		@assert stats.solved
+		S.qdot .= x # S[(N+1):end] .= H \ b
 		return
 	end
 end
 
 # ╔═╡ faf03c10-9319-4b9f-a643-0ba8603d4a71
-f = source_from_lagrangian(lagrangian_elastic_rope)
-
-# ╔═╡ 7f75c3e7-dbdd-42b8-ba36-0de072101a7d
-u0 = NamedArrayPartition(; q=q0, qdot=qdot0)
+f_elastic_rope = source_from_lagrangian(lagrangian_elastic_rope)
 
 # ╔═╡ 74a29a96-8afb-4bb8-8b5b-dd7b413065b2
-prob = ODEProblem(f, u0, (t0, tend), p)
-
-# ╔═╡ a5620278-42f2-45f4-a318-16227e84eaeb
-sol = solve(prob, Tsit5())
+sol_elastic_rope = let
+	p, q0, qdot0, t0, tend = parameters_elastic_rope()
+	u0 = NamedArrayPartition(; q=q0, qdot=qdot0)
+	prob = ODEProblem(f_elastic_rope, u0, (t0, tend), p)
+	solve(prob, Tsit5())
+end
 
 # ╔═╡ eb06b54f-5a74-4dad-9b6d-c5961ef9d8a6
 let 
+	sol = sol_elastic_rope
 	fig = Figure()
 	ts = sol.t
-	N = length(q0)
+	N = length(first(sol.u).q)
 	for i in 1:N
 		ax = Axis(fig[1,i], xlabel="t", ylabel=L"q")
 		ax2 = Axis(fig[2,i], xlabel="t", ylabel=L"\dot{q}")
@@ -236,7 +344,32 @@ let
 		lines!(ax3, q, qdot)
 	end
 	fig
-	save("figure.png", fig)
+end
+
+# ╔═╡ e7401141-7539-4139-9cd1-f90b9ef64034
+f_celestial_mechanics = source_from_lagrangian(lagrangian_celestial_mechanics)
+
+# ╔═╡ f990c0c4-5b62-456c-890c-1ffa0b2c5e88
+sol_celestial_mechanics = let
+	p, q0, qdot0, t0, tend = parameters_celestial_mechanics()
+	u0 = NamedArrayPartition(; q=q0, qdot=qdot0)
+	prob = ODEProblem(f_celestial_mechanics, u0, (t0, tend), p)
+	solve(prob, Tsit5())
+end
+
+# ╔═╡ 9f675d98-6c3e-4b8c-8259-2b63e7bd499a
+let 
+	sol = sol_celestial_mechanics
+	fig = Figure()
+	ts = sol.t
+	N = length(first(sol.u).q) ÷ 2
+	ax = Axis(fig[1,1], xlabel=L"x", ylabel=L"y")
+	for i in 1:N
+		x = map(j->sol.u[j].q[i], 1:length(ts))
+		y  = map(j->sol.u[j].q[N+i], 1:length(ts))
+		
+		lines!(ax, x, y)
+	end
 	fig
 end
 
@@ -245,6 +378,8 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+LinearOperators = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
 OrdinaryDiffEqTsit5 = "b1df2697-797e-41e3-8120-5422d3b24e4a"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
@@ -252,6 +387,8 @@ RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 [compat]
 CairoMakie = "~0.13.5"
 Enzyme = "~0.13.43"
+Krylov = "~0.10.1"
+LinearOperators = "~2.9.0"
 OrdinaryDiffEqTsit5 = "~1.1.0"
 PlutoUI = "~0.7.62"
 RecursiveArrayTools = "~3.33.0"
@@ -263,7 +400,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.9"
 manifest_format = "2.0"
-project_hash = "ec749fb6f64e94fa3c4675b43b0bafd9e5b182f9"
+project_hash = "5a11c23fc7dfc87d49aaef5651a18987a035a3ec"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "e2478490447631aedba0823d4d7a80b2cc8cdb32"
@@ -1172,6 +1309,12 @@ git-tree-sha1 = "7d703202e65efa1369de1279c162b915e245eed1"
 uuid = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 version = "0.6.9"
 
+[[deps.Krylov]]
+deps = ["LinearAlgebra", "Printf", "SparseArrays"]
+git-tree-sha1 = "b94257a1a8737099ca40bc7271a8b374033473ed"
+uuid = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+version = "0.10.1"
+
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "170b660facf5df5de098d866564877e119141cbd"
@@ -1306,6 +1449,22 @@ version = "2.41.0+0"
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[[deps.LinearOperators]]
+deps = ["FastClosures", "LinearAlgebra", "Printf", "Requires", "SparseArrays", "TimerOutputs"]
+git-tree-sha1 = "f55281226cdae8edea2c850fda88d8f5a03485b6"
+uuid = "5c8ed15e-5a4c-59e4-a42b-c7e8811fb125"
+version = "2.9.0"
+
+    [deps.LinearOperators.extensions]
+    LinearOperatorsCUDAExt = "CUDA"
+    LinearOperatorsChainRulesCoreExt = "ChainRulesCore"
+    LinearOperatorsLDLFactorizationsExt = "LDLFactorizations"
+
+    [deps.LinearOperators.weakdeps]
+    CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    LDLFactorizations = "40e66cde-538c-5869-a4ad-c39174c6795b"
 
 [[deps.LogExpFunctions]]
 deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
@@ -2064,6 +2223,18 @@ git-tree-sha1 = "f21231b166166bebc73b99cea236071eb047525b"
 uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 version = "0.11.3"
 
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "f57facfd1be61c42321765d3551b3df50f7e09f6"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.28"
+
+    [deps.TimerOutputs.extensions]
+    FlameGraphsExt = "FlameGraphs"
+
+    [deps.TimerOutputs.weakdeps]
+    FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
+
 [[deps.Tracy]]
 deps = ["ExprTools", "LibTracyClient_jll", "Libdl"]
 git-tree-sha1 = "16439d004690d4086da35528f0c6b4d7006d6dae"
@@ -2299,20 +2470,25 @@ version = "3.6.0+0"
 # ╟─f72514f6-5272-4dd4-a41a-d14c1b4c8c8a
 # ╠═a5f60179-1716-44d1-940b-52ad1480cebf
 # ╠═b2bcad6b-461a-4ee2-aa78-23ae7d9560b1
-# ╠═e748dd2b-d287-4a23-975b-798e4e267518
-# ╠═bb75a45d-c7ba-4d4e-80b0-6fcd123fc857
 # ╠═2afe897c-b5a5-4d07-8fad-d3ea57ce68d4
+# ╠═faf03c10-9319-4b9f-a643-0ba8603d4a71
+# ╠═74a29a96-8afb-4bb8-8b5b-dd7b413065b2
+# ╟─eb06b54f-5a74-4dad-9b6d-c5961ef9d8a6
+# ╟─c41f59d7-787c-4a1f-8b2d-f3b375c00a91
+# ╠═dd3ab91a-1b0f-4c2f-98f1-f7d296653892
+# ╠═4b19e471-6aba-4c9d-98ce-718a90d02e2f
+# ╠═d41520f3-9e7e-4835-9c0a-0187e7fc17d8
+# ╠═826f9ce1-dfde-4a0e-b91a-bd53ca646778
+# ╠═e7401141-7539-4139-9cd1-f90b9ef64034
+# ╠═f990c0c4-5b62-456c-890c-1ffa0b2c5e88
+# ╟─9f675d98-6c3e-4b8c-8259-2b63e7bd499a
+# ╟─07a1916d-fec3-404f-b9ae-1eb65c8e9e6e
+# ╟─ce455b95-2b09-497e-8a99-4f1164d45d0f
 # ╠═d2a6ae70-1759-4587-9f4f-2bd36909a6c2
-# ╠═b6363338-08bd-459e-8148-7aef579026d3
+# ╟─fabde49b-3e3d-42b2-85f2-3d33a6dfcaba
 # ╠═b8a43d3a-c927-49c1-b2ee-eaa0db911c99
 # ╠═8618e845-b62d-488d-b2b6-58dd228905dd
-# ╠═67a1763f-cc01-4595-9727-0f31e8a14473
-# ╠═b4918378-7059-4e94-991b-68b09a760e73
+# ╠═f7220fe5-9497-4013-a4ae-b7604ef9c94e
 # ╠═672bcc28-b296-49a7-b44c-903edf5a51a8
-# ╠═faf03c10-9319-4b9f-a643-0ba8603d4a71
-# ╠═7f75c3e7-dbdd-42b8-ba36-0de072101a7d
-# ╠═74a29a96-8afb-4bb8-8b5b-dd7b413065b2
-# ╠═a5620278-42f2-45f4-a318-16227e84eaeb
-# ╟─eb06b54f-5a74-4dad-9b6d-c5961ef9d8a6
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
