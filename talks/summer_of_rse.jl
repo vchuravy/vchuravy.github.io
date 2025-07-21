@@ -955,16 +955,25 @@ let
 	fig = Figure()
 	ax = Axis(fig[1,1], title="Solution")
 	if "Numerical" in decay_plot
-		lines!(ax, sol_decay.t, sol_decay'; label = "Numerical")
+		lines!(ax, sol_decay.t, sol_decay';
+			   label = "Numerical")
+		errorbars!(ax, sol_decay.t, sol_decay';
+				   label = "Numerical", whiskerwidth=7)
 	end
 	if "Analytic" in decay_plot
-		lines!(ax, sol_decay.t, u_decay; label = "Analytic")
+		lines!(ax, sol_decay.t, u_decay;
+			   label = "Analytic")
+		errorbars!(ax, sol_decay.t, u_decay;
+				   label = "Analytic", whiskerwidth=7)
 	end
-	axislegend(ax)
+	axislegend(ax; merge = true)
 	ax2 = Axis(fig[2,1], title="Error")
 	lines!(ax2, sol_decay.t, sol_decay' .- u_decay)
 	fig
 end
+
+# ╔═╡ 01ec595c-bab7-4067-8a6a-b1e0bd97e82c
+errorbars
 
 # ╔═╡ 2f11cc73-336d-4cf0-a8cd-5761090fe403
 md"""
@@ -1018,12 +1027,19 @@ let
 	fig = Figure()
 	ax = Axis(fig[1,1], title="Solution")
 	if "Numerical" in small_plot
-		lines!(ax, sol_small_pendulum.t, sol_small_pendulum[2, :]; label = "Numerical")
+		lines!(ax, sol_small_pendulum.t, sol_small_pendulum[2, :];
+			   label = "Numerical")
+		errorbars!(ax, sol_small_pendulum.t, sol_small_pendulum[2, :],
+				   label = "Numerical", whiskerwidth = 7)
 	end
 	if "Analytic" in small_plot
-		lines!(ax, sol_small_pendulum.t, u_small_pendulum; label = "Analytic")
+		lines!(ax, sol_small_pendulum.t, u_small_pendulum;
+			   label = "Analytic")
+		errorbars!(ax, sol_small_pendulum.t, u_small_pendulum;
+				   label = "Analytic", whiskerwidth = 7)
+
 	end
-	axislegend(ax)
+	axislegend(ax; merge=true)
 	ax2 = Axis(fig[2,1], title="Error")
 	lines!(ax2, sol_small_pendulum.t, sol_small_pendulum[2, :] .- u_small_pendulum)
 	fig
@@ -1044,7 +1060,11 @@ begin
 end
 
 # ╔═╡ ccb61eb1-489d-4a74-b589-75c6eb153de0
-lines(sol_arbitrary_pendulum.t, sol_arbitrary_pendulum[2, :]; label="Numerical")
+let
+	fig, ax, _ = lines(sol_arbitrary_pendulum.t, sol_arbitrary_pendulum[2, :]; label="Numerical")
+	errorbars!(sol_arbitrary_pendulum.t, sol_arbitrary_pendulum[2, :], whiskerwidth=7)
+	fig
+end
 
 # ╔═╡ c79b4ac1-2ddd-49ee-a32c-66bee0fd9d21
 md"""
@@ -3775,6 +3795,7 @@ version = "3.6.0+0"
 # ╠═42f4e4dd-a760-4920-98db-103185337f47
 # ╟─f4007ce0-f608-4288-bf8c-9da751f47e89
 # ╟─c0ce6535-542e-4b7f-95e8-880109981aa6
+# ╠═01ec595c-bab7-4067-8a6a-b1e0bd97e82c
 # ╟─2f11cc73-336d-4cf0-a8cd-5761090fe403
 # ╠═c65a27f9-7ad9-4ee4-9fce-6eec2baf34a0
 # ╠═9cd70d32-94e7-44fa-8d4d-ef8daa2aa424
@@ -3787,7 +3808,7 @@ version = "3.6.0+0"
 # ╟─1b01f151-bd9b-4b14-a649-9f4bfb78af17
 # ╠═53912761-8954-4d45-9eef-a2f0c5604d93
 # ╠═f15ad6e9-3463-49c9-b09b-923a05ebe262
-# ╠═ccb61eb1-489d-4a74-b589-75c6eb153de0
+# ╟─ccb61eb1-489d-4a74-b589-75c6eb153de0
 # ╟─c79b4ac1-2ddd-49ee-a32c-66bee0fd9d21
 # ╟─2b833425-088e-4319-844a-785faf316756
 # ╠═26352f5f-fb5d-4810-b990-75390e560e67
