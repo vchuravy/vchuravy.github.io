@@ -2,13 +2,9 @@
 # v0.20.13
 
 #> [frontmatter]
-#> chapter = "5"
-#> section = "1"
-#> order = "14"
-#> title = "Compilers"
-#> date = "2025-07-08"
+#> title = "Delving into Julia"
+#> date = "2025-07-23"
 #> tags = ["module5", "track_performance"]
-#> layout = "layout.jlhtml"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"
