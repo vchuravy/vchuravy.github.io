@@ -30,6 +30,9 @@ using JuliaSyntax
 # ╔═╡ b416ea3c-92d0-46b0-bbc0-99b7dfabe328
 using IRViz
 
+# ╔═╡ 5063e065-ea6c-4562-a021-635d10eacbe5
+using MacroTools
+
 # ╔═╡ 2f03b26e-08e1-4be8-81e3-1d97e9c46e97
 html"<button onclick='present()'>Toggle presentation mode</button>"
 
@@ -141,17 +144,11 @@ function f()
 	i + s
 end
 
-# ╔═╡ b4075e47-a2da-4427-b84f-a0ecd661baf1
-f()
-
 # ╔═╡ 26e437f8-b52b-4156-92f7-a0faccac36a4
 md"""
 !!! note
     We can still write analyzers that perform these checks ahead of execution.
 """
-
-# ╔═╡ 0d634607-f5cf-4e3a-8fba-e0c97efc76a9
-@code_typed f()
 
 # ╔═╡ f3429ef3-e233-4124-a368-5ad75553a20f
 md"""
@@ -300,98 +297,6 @@ As soon as we have an AST we could have written an interpreter. Perhaps we would
 
 # ╔═╡ 04e4c1f6-f6c7-4b29-97f2-9de06ee4d71b
 import Core.Compiler as CC
-
-# ╔═╡ baa49d7b-62c3-4fee-8981-e89408806561
-function interpret_naively(CL, args)
-	code = CL.code
-	slots = Vector{Any}(undef, length(CL.slotnames))
-	stmts = Vector{Any}(undef, length(code)) # SSA
-
-	# copy args into vars
-	for (name, value) in args
-		id = findfirst(==(name), CL.slotnames)
-		slots[id] = value
-	end
-
-	resolve(val::CC.SSAValue) = stmts[val.id]
-	resolve(val::CC.SlotNumber) = slots[val.id]
-		
-	function local_eval(stmt)
-		if stmt isa GlobalRef
-			return eval(stmt)
-		elseif stmt isa CC.SSAValue || stmt isa CC.SlotNumber
-			return resolve(stmt)
-		elseif stmt isa Expr
-			head = stmt.head
-			if head == :call
-				resolve_args = map(local_eval, stmt.args)
-				f = first(resolve_args)
-				f_args = resolve_args[2:end]
-				if f isa Core.IntrinsicFunction || f isa Core.Builtin || 
-				   f === Base.iterate
-					return f(f_args...)
-				end
-				argtypes = ntuple(i->Core.Typeof(f_args[i]), length(f_args))
-				CL_f = code_lowered(f, argtypes) |> only
-				f_args′ = collect(zip(CL_f.slotnames[2:end], f_args))
-				try
-					return interpret_naively(CL_f, f_args′)
-				catch exc
-					@error "Interpretation failed" exception=exc f f_args
-					return f(f_args...)
-				end
-			elseif head == :(=)
-				@show stmt
-				error("= in rhs expression")
-			else
-				@show stmt
-				error("Unknown expression")
-			end
-		else
-			return stmt
-		end
-	end
-	
-	# interpreter
-	pc = 1
-	while true
-		stmt = code[pc]
-		if stmt isa GlobalRef || stmt isa CC.SSAValue || stmt isa CC.SlotNumber
-			stmts[pc] = local_eval(stmt)
-		elseif stmt isa Expr
-			head = stmt.head
-			if head == :(=)
-				lhs = stmt.args[1]
-				rhs = stmt.args[2]
-				@assert lhs isa CC.SlotNumber
-				val = local_eval(rhs)
-				slots[lhs.id] = val
-				stmts[pc] = val
-			else
-				stmts[pc] = local_eval(stmt)
-			end
-		elseif stmt isa CC.GotoIfNot
-			cond = local_eval(stmt.cond)
-			if !cond
-				pc = stmt.dest
-			else
-				pc += 1
-			end
-			continue
-		elseif stmt isa CC.GotoNode
-			pc = stmt.label
-			continue
-		elseif stmt isa CC.ReturnNode
-			return local_eval(stmt.val)
-		else
-			error("Unknown stmt")
-		end
-		pc += 1
-	end
-end
-
-# ╔═╡ ae37bb88-8bae-434f-b2fd-2ad1a31e9c06
-interpret_naively(CL, (:X => ones(3),))
 
 # ╔═╡ d58bb116-c069-453d-9866-abd63cfa86d8
 md"""
@@ -869,45 +774,462 @@ Where is a function defined `@which` & `@edit`
 # ╔═╡ c3488041-e25e-46f4-95ee-a7aceebbaf38
 md"""
 ## Cthulhu.jl
-""" |> TODO
+
+!!! note
+    Cthulhu is essentially an interactive wrapper around `code_typed`.
+"""
+
+# ╔═╡ d2f15822-6d32-4a96-8529-14c8cd2d5d5f
+begin
+	struct Interval <: Number
+		a::Float64
+		b::Float64
+	end
+
+	Base.eltype(::Interval) = Float64
+	contains(i::Interval, x::Float64) = i.a <= x <= i.b
+	f(I::Interval, xs::Vector{Float64}) = contains.(I, xs)
+end
+
+# ╔═╡ b4075e47-a2da-4427-b84f-a0ecd661baf1
+f()
+
+# ╔═╡ 0d634607-f5cf-4e3a-8fba-e0c97efc76a9
+@code_typed f()
+
+# ╔═╡ a44ed37a-775a-4442-92e6-37d77134cf26
+@code_typed optimize=false f(Interval(1.0, 2.0), ones(3))
+
+# ╔═╡ a267c793-cb8d-4f51-b6fd-40f14bb3ab23
+md"""
+Huh! Why does this yield `Union{BitVector, Vector{Union{}}}`
+""" |> question_box
+
+# ╔═╡ dfc43147-6290-4abf-a90a-a579d8978044
+md"""
+```julia
+@descend optimize=false f(Interval(1.0, 2.0), ones(3))
+```
+"""
+
+# ╔═╡ a6ac3bbc-568b-4a67-ab5d-9bd64cd5744d
+md"""
+```
+Select a call to descend into or ↩ to ascend. [q]uit. [b]ookmark.
+Toggles: [w]arn, [h]ide type-stable statements, [t]ype annotations, [s]yntax highlight for Source/LLVM/Native, [j]ump to source always, [o]ptimize, [d]ebuginfo, [r]emarks, [e]ffects, e[x]ception types, [i]nlining costs.
+Show: [S]ource code, [A]ST, [T]yped code, [L]LVM IR, [N]ative code
+Actions: [E]dit source code, [R]evise and redisplay
+```
+"""
+
+# ╔═╡ 346066a6-2998-4b80-a125-348744b04450
+md"""
+!!! note "Tips and Tricks"
+    - Cthulhu starts in `[S]` mode, personally I mostly use `[T]`
+    - Some options are "toggles" switching mode permanently.
+    - `[o]` switches between optimized and unoptimized
+
+"""
+
+# ╔═╡ b6dc7fb1-4f98-413a-85da-733ccac48c83
+md"""
+1. Switch mode to `[T]` and `[o]` (de-optimize)
+2. Follow:
+   - `%3 = materialize(::Broadcasted{…})::Union{BitVector, Vector{Union{}}}`
+   - `%4 = copy(::Broadcasted{…})::Union{BitVector, Vector{Union{}}}`
+   - `%17 = combine_eltypes(::#contains,::Tuple{…})::Core.Const(Union{})`
+   - `%13 = return_type < contains(::Float64,::Float64)::Union{} >`
+
+```julia-repl
+	julia> contains(1, 1)
+ERROR: MethodError: no method matching contains(::Int64, ::Int64)
+The function `contains` exists, but no method is defined for this combination of argument types.
+
+Closest candidates are:
+  contains(::Interval, ::Float64)
+   @ Main REPL[2]:8
+```
+
+We intended `Interval` to be used as a `Number`, yet we implemented `eltype`. 
+`combine_eltypes` uses `eltype` as a trait-function.
+	
+""" |> answer_box
 
 # ╔═╡ 9f07454b-5a3f-4b1b-8c80-b97afee36b99
 md"""
 ## Abstract interpretation revisited
+"""
 
+# ╔═╡ 4624a8ef-af31-417e-a004-118ae89f05cf
+md"""
+- https://aviatesk.github.io/posts/data-flow-problem/
+- https://aviatesk.github.io/posts/introduction-to-static-analysis/
+"""
 
-```julia
-function example(X)
-	acc = zero(eltype(X))
-	for x in X
-		acc += x
+# ╔═╡ 4ad862ac-bf95-4c5a-9e89-e53a5299f4d7
+begin
+	abstract type Exp end
+	
+	struct Sym <: Exp
+	    name::Symbol
 	end
-	return acc
+	
+	struct Num <: Exp
+	    val::Int
+	end
+	
+	struct Call <: Exp
+	    head::Sym
+	    args::Vector{Exp}
+	end
+	
+	abstract type Instr end
+	
+	struct Assign <: Instr
+	    lhs::Sym
+	    rhs::Exp
+	end
+	
+	struct Goto <: Instr
+	    label::Int
+	end
+	
+	struct GotoIf <: Instr
+	    label::Int
+	    cond::Exp
+	end
+	
+	const Program = Vector{Instr}
 end
+
+# ╔═╡ 81034be7-b08a-40e8-b13b-ea892aa8ed6c
+begin
+	import Base: ≤, ==, <, show
+
+	abstract type LatticeElement end
+	
+	struct Const <: LatticeElement
+	    val::Int
+	end
+	
+	struct TopElement <: LatticeElement end
+	struct BotElement <: LatticeElement end
+	
+	const ⊤ = TopElement()
+	const ⊥ = BotElement()
+
+	≤(x::LatticeElement, y::LatticeElement) = x≡y
+	≤(::BotElement,      ::TopElement)      = true
+	≤(::BotElement,      ::LatticeElement)  = true
+	≤(::LatticeElement,  ::TopElement)      = true
+
+	# NOTE: == and < are defined such that future LatticeElements only need to implement ≤
+	==(x::LatticeElement, y::LatticeElement) = x≤y && y≤x
+	<(x::LatticeElement,  y::LatticeElement) = x≤y && !(y≤x)
+	
+	# join
+	⊔(x::LatticeElement, y::LatticeElement) = x≤y ? y : y≤x ? x : ⊤
+	
+	# meet
+	⊓(x::LatticeElement, y::LatticeElement) = x≤y ? x : y≤x ? y : ⊥
+
+	const AbstractState = Dict{Symbol,LatticeElement}
+	
+	# extend lattices of abstract values to lattices of mappings of variables to abstract values;
+	# ⊓ and ⊔ operate pair-wise, and from there we can just rely on the Base implementation for
+	# dictionary equality comparison
+	
+	⊔(X::AbstractState, Y::AbstractState) = AbstractState( v => X[v] ⊔ Y[v] for v in keys(X) )
+	⊓(X::AbstractState, Y::AbstractState) = AbstractState( v => X[v] ⊓ Y[v] for v in keys(X) )
+	
+	<(X::AbstractState, Y::AbstractState) = X⊓Y==X && X≠Y
+end
+
+# ╔═╡ baa49d7b-62c3-4fee-8981-e89408806561
+function interpret_naively(CL, args)
+	code = CL.code
+	slots = Vector{Any}(undef, length(CL.slotnames))
+	stmts = Vector{Any}(undef, length(code)) # SSA
+
+	# copy args into vars
+	for (name, value) in args
+		id = findfirst(==(name), CL.slotnames)
+		slots[id] = value
+	end
+
+	resolve(val::CC.SSAValue) = stmts[val.id]
+	resolve(val::CC.SlotNumber) = slots[val.id]
+		
+	function local_eval(stmt)
+		if stmt isa GlobalRef
+			return eval(stmt)
+		elseif stmt isa CC.SSAValue || stmt isa CC.SlotNumber
+			return resolve(stmt)
+		elseif stmt isa Expr
+			head = stmt.head
+			if head == :call
+				resolve_args = map(local_eval, stmt.args)
+				f = first(resolve_args)
+				f_args = resolve_args[2:end]
+				if f isa Core.IntrinsicFunction || f isa Core.Builtin || 
+				   f === Base.iterate
+					return f(f_args...)
+				end
+				argtypes = ntuple(i->Core.Typeof(f_args[i]), length(f_args))
+				CL_f = code_lowered(f, argtypes) |> only
+				f_args′ = collect(zip(CL_f.slotnames[2:end], f_args))
+				try
+					return interpret_naively(CL_f, f_args′)
+				catch exc
+					@error "Interpretation failed" exception=exc f f_args
+					return f(f_args...)
+				end
+			elseif head == :(=)
+				@show stmt
+				error("= in rhs expression")
+			else
+				@show stmt
+				error("Unknown expression")
+			end
+		else
+			return stmt
+		end
+	end
+	
+	# interpreter
+	pc = 1
+	while true
+		stmt = code[pc]
+		if stmt isa GlobalRef || stmt isa CC.SSAValue || stmt isa CC.SlotNumber
+			stmts[pc] = local_eval(stmt)
+		elseif stmt isa Expr
+			head = stmt.head
+			if head == :(=)
+				lhs = stmt.args[1]
+				rhs = stmt.args[2]
+				@assert lhs isa CC.SlotNumber
+				val = local_eval(rhs)
+				slots[lhs.id] = val
+				stmts[pc] = val
+			else
+				stmts[pc] = local_eval(stmt)
+			end
+		elseif stmt isa CC.GotoIfNot
+			cond = local_eval(stmt.cond)
+			if !cond
+				pc = stmt.dest
+			else
+				pc += 1
+			end
+			continue
+		elseif stmt isa CC.GotoNode
+			pc = stmt.label
+			continue
+		elseif stmt isa CC.ReturnNode
+			return local_eval(stmt.val)
+		else
+			error("Unknown stmt")
+		end
+		pc += 1
+	end
+end
+
+# ╔═╡ ae37bb88-8bae-434f-b2fd-2ad1a31e9c06
+interpret_naively(CL, (:X => ones(3),))
+
+# ╔═╡ fe9bc7bc-6b2e-44e7-9c46-8c4551b26767
+begin
+	# unwrap our lattice representation into actual Julia value
+	unwrap_val(x::Num)   = x.val
+	unwrap_val(x::Const) = x.val
+end
+
+# ╔═╡ 0ab69856-bcc5-4d08-b576-45b6d61fccaa
+begin
+	abstract_eval(x::Num, s::AbstractState) = Const(x.val)
+
+	abstract_eval(x::Sym, s::AbstractState) = get(s, x.name, ⊥)
+
+	function abstract_eval(x::Call, s::AbstractState)
+	    f = getfield(@__MODULE__, x.head.name)
+	
+	    argvals = Int[]
+	    for arg in x.args
+	        arg = abstract_eval(arg, s)
+	        arg === ⊥ && return ⊥ # bail out if any of call arguments is non-constant
+	        push!(argvals, unwrap_val(arg))
+	    end
+	
+	    return Const(f(argvals...))
+	end
+end
+
+# ╔═╡ 3c8d23b3-9bb9-469f-8564-8201bd8d11d3
+md"""
+```
+0 ─ I₀ = x := 1
+│   I₁ = y := 2
+│   I₂ = z := 3
+└── I₃ = goto I₈
+1 ─ I₄ = r := y + z
+└── I₅ = if x ≤ z goto I₇
+2 ─ I₆ = r := z + y
+3 ─ I₇ = x := x + 1
+4 ─ I₈ = if x < 10 goto I₄
 ```
 """
 
-# ╔═╡ f6a32a9f-431b-496f-b28f-3136a3df3daf
+# ╔═╡ 19dcf9fc-1b17-4c3c-8542-0016cd4b38b2
+prog0 = [Assign(Sym(:x), Num(1)),                              # I₀ x = 1
+         Assign(Sym(:y), Num(2)),                              # I₁ y = 2
+         Assign(Sym(:z), Num(3)),                              # I₂ z = 3
+         Goto(8),                                              # I₃ goto I₈
+         Assign(Sym(:r), Call(Sym(:(+)), [Sym(:y), Sym(:z)])), # I₄ r = y + z  
+         GotoIf(7, Call(Sym(:(≤)), [Sym(:x), Sym(:z)])),       # I₅ if x ≤ z goto I₇
+         Assign(Sym(:r), Call(Sym(:(+)), [Sym(:z), Sym(:y)])), # I₆ r = z + y
+         Assign(Sym(:x), Call(Sym(:(+)), [Sym(:x), Num(1)])),  # I₇ x = x + 1
+         GotoIf(4, Call(Sym(:(<)), [Sym(:x), Num(10)])),       # I₈ if x < 10 goto I₄
+         ]::Program;
+
+# ╔═╡ 180b734b-3052-4ea0-9663-f220b54a338b
 begin
-	tfunc(::typeof(zero), T::Type) = T
-	tfunc(::typeof(eltype), Type{Array{T}}) where T = T
-	# iterate
-	# getfield
-	# ===
-	# not_int
+	macro prog(blk)
+	    Instr[instr(x) for x in filter(!islnn, blk.args)]::Program
+	end
+	
+	function instr(x)
+	    if @capture(x, lhs_ = rhs_)               # => Assign
+	        Assign(instr(lhs), instr(rhs))
+	    elseif @capture(x, @goto label_)          # => Goto
+	        Goto(label)
+	    elseif @capture(x, cond_ && @goto label_) # => GotoIf
+	        GotoIf(label, instr(cond))
+	    elseif @capture(x, f_(args__))            # => Call
+	        Call(instr(f), instr.(args))
+	    elseif isa(x, Symbol)                     # => Sym
+	        Sym(x)
+	    elseif isa(x, Int)                        # => Num
+	        Num(x)
+	    else
+	        error("invalid expression: $(x)")
+	    end
+	end
+	
+	islnn(@nospecialize(_)) = false
+	islnn(::LineNumberNode) = true
 end
 
-# ╔═╡ e8664b7e-ef13-4db4-8985-41f2ed9b44d6
-CL
+# ╔═╡ effc78b8-8fc2-46f9-b668-354d6c93f07a
+prog1 = @prog begin
+    x = 1             # I₀
+    y = 2             # I₁
+    z = 3             # I₂
+    @goto 8           # I₃
+    r = y + z         # I₄
+    x ≤ z && @goto 7  # I₅
+    r = z + y         # I₆
+    x = x + 1         # I₇
+    x < 10 && @goto 4 # I₈
+end;
 
-# ╔═╡ 4624a8ef-af31-417e-a004-118ae89f05cf
+# ╔═╡ 568e8cbc-9a14-4095-85a6-f3d44bed99c8
+# NOTE: in this problem, we make sure that states will always move to _lower_ position in lattice, so
+# - initialize states with `⊤`
+# - we use `⊓` (meet) operator to update states,
+# - and the condition we use to check whether or not the statement makes a change is `new ≠ prev`
+function max_fixed_point(prog::Program, a₀::AbstractState, eval)
+    n = length(prog)
+    init = AbstractState( v => ⊤ for v in keys(a₀) )
+    s = [ a₀; [ init for i = 2:n ] ]
+    W = BitSet(0:n-1)
 
+    while !isempty(W)
+        pc = first(W)
+        while pc ≠ n
+            delete!(W, pc)
+            I = prog[pc+1]
+            new = s[pc+1]
+            if isa(I, Assign)
+                # for an assignment, outgoing value is different from incoming
+                new = copy(new)
+                new[I.lhs.name] = eval(I.rhs, new)
+            end
+
+            if isa(I, Goto)
+                pc´ = I.label
+            else
+                pc´ = pc+1
+                if isa(I, GotoIf)
+                    l = I.label
+                    if new ≠ s[l+1]
+                        push!(W, l)
+                        s[l+1] = new ⊓ s[l+1]
+                    end
+                end
+            end
+            if pc´≤n-1 && new ≠ s[pc´+1]
+                s[pc´+1] = new ⊓ s[pc´+1]
+                pc = pc´
+            else
+                pc = n
+            end
+        end
+    end
+
+    return s
+end
+
+# ╔═╡ e722a6ef-7bd5-43ac-acf2-6f383e65a326
+# Start with Any (e.g. maximal unknowness)
+a₀ = AbstractState(:x => ⊤, :y => ⊤, :z => ⊤, :r => ⊤)
+
+# ╔═╡ 83cc74cb-1f65-4393-8903-1ef6ebf01735
+max_fixed_point(prog0, a₀, abstract_eval)
+
+# ╔═╡ 0dbc244f-8afb-43ab-8e20-9db3b3e56930
+# generate valid Julia code from the "`Instr` syntax"
+macro prog′(blk)
+    prog′ = Expr(:block)
+    bns = [gensym(Symbol(:instruction, i-1)) for i in 1:length(blk.args)] # pre-generate labels for all instructions
+
+    for (i,x) in enumerate(filter(!islnn, blk.args))
+        x = MacroTools.postwalk(x) do x
+            return if @capture(x, @goto label_)
+                Expr(:symbolicgoto, bns[label+1]) # fix `@goto i` into valid goto syntax
+            else
+                x
+            end
+        end
+
+        push!(prog′.args, Expr(:block, Expr(:symboliclabel, bns[i]), x)) # label this statement
+    end
+
+    return esc(prog′)
+end
+
+# ╔═╡ c45b905f-0aa3-4813-ad13-144d029bbcdf
+code_typed(; optimize = false) do
+    @prog′ begin
+        x = 1             # I₀
+        y = 2             # I₁
+        z = 3             # I₂
+        @goto 8           # I₃
+        r = y + z         # I₄
+        x ≤ z && @goto 7  # I₅
+        r = z + y         # I₆
+        x = x + 1         # I₇
+        x < 10 && @goto 4 # I₈
+
+        x, y, z, r # to check the result of abstract interpretation
+    end
+end |> first
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 IRViz = "fe03f759-463e-4126-a68f-1df7fb7a8375"
 JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
@@ -915,6 +1237,7 @@ ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
 [compat]
 IRViz = "~1.0.0"
 JuliaSyntax = "~1.0.2"
+MacroTools = "~0.5.16"
 PlutoTeachingTools = "~0.4.1"
 PlutoUI = "~0.7.68"
 ShortCodes = "~0.3.6"
@@ -926,7 +1249,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "0a25c30aaa33f8ded7a6e093b39e52f9850352c2"
+project_hash = "7da6058b6f7d89ffc1b7b0556fb508efe648fa3f"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -1464,10 +1787,29 @@ version = "17.4.0+2"
 # ╟─55b87adc-2bac-45ae-b8e2-f318502782f4
 # ╟─6b5e0098-631d-4a5d-9333-a2ab7c6e95f8
 # ╟─a125fcfc-3859-4a7d-b8fb-68fbe3add529
-# ╠═c3488041-e25e-46f4-95ee-a7aceebbaf38
+# ╟─c3488041-e25e-46f4-95ee-a7aceebbaf38
+# ╠═d2f15822-6d32-4a96-8529-14c8cd2d5d5f
+# ╠═a44ed37a-775a-4442-92e6-37d77134cf26
+# ╟─a267c793-cb8d-4f51-b6fd-40f14bb3ab23
+# ╟─dfc43147-6290-4abf-a90a-a579d8978044
+# ╟─a6ac3bbc-568b-4a67-ab5d-9bd64cd5744d
+# ╟─346066a6-2998-4b80-a125-348744b04450
+# ╟─b6dc7fb1-4f98-413a-85da-733ccac48c83
 # ╟─9f07454b-5a3f-4b1b-8c80-b97afee36b99
-# ╠═f6a32a9f-431b-496f-b28f-3136a3df3daf
-# ╠═e8664b7e-ef13-4db4-8985-41f2ed9b44d6
-# ╠═4624a8ef-af31-417e-a004-118ae89f05cf
+# ╟─4624a8ef-af31-417e-a004-118ae89f05cf
+# ╠═4ad862ac-bf95-4c5a-9e89-e53a5299f4d7
+# ╠═81034be7-b08a-40e8-b13b-ea892aa8ed6c
+# ╠═0ab69856-bcc5-4d08-b576-45b6d61fccaa
+# ╠═fe9bc7bc-6b2e-44e7-9c46-8c4551b26767
+# ╟─3c8d23b3-9bb9-469f-8564-8201bd8d11d3
+# ╠═19dcf9fc-1b17-4c3c-8542-0016cd4b38b2
+# ╠═5063e065-ea6c-4562-a021-635d10eacbe5
+# ╠═180b734b-3052-4ea0-9663-f220b54a338b
+# ╠═effc78b8-8fc2-46f9-b668-354d6c93f07a
+# ╠═568e8cbc-9a14-4095-85a6-f3d44bed99c8
+# ╠═e722a6ef-7bd5-43ac-acf2-6f383e65a326
+# ╠═83cc74cb-1f65-4393-8903-1ef6ebf01735
+# ╟─0dbc244f-8afb-43ab-8e20-9db3b3e56930
+# ╠═c45b905f-0aa3-4813-ad13-144d029bbcdf
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
