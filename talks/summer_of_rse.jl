@@ -79,8 +79,10 @@ md"""
 **Julia for Research Software Engineering**
 """
 
-# ╔═╡ fcc73c75-bb3b-4e05-ad49-95bced033e6a
-
+# ╔═╡ 38bd2812-84ed-4c07-a3c1-a647803b0541
+md"""
+[https://vchuravy.dev/talks/summer\_of\_rse/](https://vchuravy.dev/talks/summer_of_rse/)
+"""
 
 # ╔═╡ 6fc6fe75-b249-48cc-9e85-6c942cb56b86
 md"""
@@ -114,6 +116,9 @@ Julia is mainly used for technical computing, and addresses a gap in the program
 Main paradigm of Julia is multiple dispatch, what functions do depend on type and number of _all_ arguments.
 """
 
+# ╔═╡ 573ac61e-7c9f-41cc-baa6-7c4216432f5e
+
+
 # ╔═╡ 787967f5-78f0-41d3-b786-078dfe3c5a8d
 md"""
 ## Why Julia? 😍
@@ -126,6 +131,9 @@ md"""
 * ...but you can still call C-like shared libraries with simple Foreign Function Interface (FFI) if you want to
 * MIT licensed: free and open source
 """
+
+# ╔═╡ de2c0e2c-d462-4ba4-ade3-451e7c1c8783
+
 
 # ╔═╡ 2e9c1107-4378-4afb-b2e7-3c86f72473fa
 md"""
@@ -165,6 +173,9 @@ Pragmatic for many applications, but has drawbacks
   - Apple
 """
 
+# ╔═╡ 5ddcd487-5751-45ad-94f5-801318818207
+
+
 # ╔═╡ b80a8dd9-f3fd-4ff4-8190-3132e07762fc
 md"""
 ## Getting started with Julia
@@ -187,6 +198,9 @@ curl -fsSL https://install.julialang.org | sh
 - Community Calendar: [https://julialang.org/community/#events](https://julialang.org/community/#events)
 
 """
+
+# ╔═╡ 03ee88c3-7ca8-4614-9c6d-bd8822d41482
+
 
 # ╔═╡ faee4e9d-4e85-452b-87d1-4d85c96c677f
 md"""
@@ -875,7 +889,6 @@ md"""
 3. Does it achieve the same **performance**?
 4. Can I take advantage of platform **specific** capabilities?
 
-> Productivity meets Performance: Julia on A64FX (doi:10.1109/CLUSTER51413.2022.00072)
 """
 
 # ╔═╡ 5a3c565c-2a5f-436c-90ba-92ccbb39509d
@@ -947,7 +960,13 @@ prefix_threads!(+, A)
 
 From
 
-> Nash et al., (2021). Basic Threading Examples in JuliaLang v1.3. JuliaCon Proceedings, 1(1), 54, https://doi.org/10.21105/jcon.00054
+> Nash et al., (2021). Basic Threading Examples in JuliaLang v1.3. JuliaCon Proceedings, 1(1), 54, [https://doi.org/10.21105/jcon.00054](https://doi.org/10.21105/jcon.00054)
+"""
+
+# ╔═╡ 57e85657-b6de-4d47-94d8-02b54361293d
+md"""
+!!! note
+    [OhMyThreads.jl](https://github.com/JuliaFolds2/OhMyThreads.jl) provides a user-friendly interface beyond `@threads`.
 """
 
 # ╔═╡ 4be44ed7-b08e-4c6d-91ef-48e9a157b072
@@ -1287,14 +1306,21 @@ md"""
 # ╔═╡ 4c128164-c772-4551-a108-c3c30500c571
 md"""
 ### JuliaCon
-""" |> TODO
+
+Yearly developer conference (usually late July)! [https://juliacon.org](https://juliacon.org).
+
+Talks are recorded and online on Youtube: [https://www.youtube.com/@TheJuliaLanguage](https://www.youtube.com/@TheJuliaLanguage)
+
+"""
 
 # ╔═╡ 74655914-6c3e-4c19-bf85-fa0a4035b1c3
 md"""
 ### Workgroup meetings
 
 - JuliaGPU
-- JuliaHPC 
+- JuliaHPC
+
+**Community Calendar:** [https://julialang.org/community/#events](https://julialang.org/community/#events)
 
 """
 
@@ -1303,12 +1329,19 @@ md"""
 ### Online spaces
 """
 
+# ╔═╡ 70ba8bc7-8cdc-49ae-bfa2-2e96f693c728
+md"""
+- Discourse: [https://discourse.julialang.org](https://discourse.julialang.org)
+- Zulip & Slack: [https://julialang.org/community/#community_channels](https://julialang.org/community/#community_channels)
+"""
+
 # ╔═╡ d53d1ed1-c0ab-4f3e-bac7-8db42371f596
 md"""
 ## How to continue
 
-- modernjuliaworkflows
-- https://vchuravy.dev/rse-course
+- Modern Julia Workflows: [https://modernjuliaworkflows.org](https://modernjuliaworkflows.org)
+- Documentation: [https://docs.julialang.org](https://docs.julialang.org)
+- [2025 RSE Course](https://vchuravy.dev/rse-course)
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1332,16 +1365,16 @@ StochasticRounding = "3843c9a1-1f18-49ff-9d99-1b4c8a8e97ed"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-CairoMakie = "~0.15.3"
+CairoMakie = "~0.15.4"
 CondaPkg = "~0.2.29"
 ForwardDiff = "~1.0.1"
 MPI = "~0.20.22"
 Measurements = "~2.14.0"
-OrdinaryDiffEqTsit5 = "~1.1.0"
+OrdinaryDiffEqTsit5 = "~1.2.0"
 PairPlots = "~3.0.2"
 PlutoTeachingTools = "~0.4.1"
 PlutoUI = "~0.7.68"
-PythonCall = "~0.9.25"
+PythonCall = "~0.9.26"
 RDatasets = "~0.7.7"
 StaticArrays = "~1.9.14"
 StochasticRounding = "~0.8.3"
@@ -1354,7 +1387,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.5"
 manifest_format = "2.0"
-project_hash = "f1ae5c0c704be27def8861fb934f3dfb13b17856"
+project_hash = "2544417cebadda0a21df116d9b2a2e9661548111"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
@@ -1510,9 +1543,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
 [[deps.BaseDirs]]
-git-tree-sha1 = "0b3c211ec48050496075523ea7ee045db9341a42"
+git-tree-sha1 = "bca794632b8a9bbe159d56bf9e31c422671b35e0"
 uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
-version = "1.3.1"
+version = "1.3.2"
 
 [[deps.BitTwiddlingConvenienceFunctions]]
 deps = ["Static"]
@@ -1567,9 +1600,9 @@ version = "1.1.1"
 
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "22e8c06a60dd4894a5e74dba616e636cb6ebe13c"
+git-tree-sha1 = "22c63a303e8d6ff1a02a0933d579dbdb6e0f2925"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.15.3"
+version = "0.15.4"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -1698,9 +1731,9 @@ weakdeps = ["InverseFunctions"]
 
 [[deps.ComputePipeline]]
 deps = ["Observables", "Preferences"]
-git-tree-sha1 = "21d0d31878a58a902013389bf5c0fcc5be4bbe5a"
+git-tree-sha1 = "e215ba0e9a9e9377f2ed87cf3eb26840c8990585"
 uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
-version = "0.1.2"
+version = "0.1.3"
 
 [[deps.ConcreteStructs]]
 git-tree-sha1 = "f749037478283d372048690eb3b5f92a79432b34"
@@ -1775,9 +1808,9 @@ version = "1.6.4"
 
 [[deps.DiffEqBase]]
 deps = ["ArrayInterface", "ConcreteStructs", "DataStructures", "DocStringExtensions", "EnumX", "EnzymeCore", "FastBroadcast", "FastClosures", "FastPower", "FunctionWrappers", "FunctionWrappersWrappers", "LinearAlgebra", "Logging", "Markdown", "MuladdMacro", "Parameters", "PrecompileTools", "Printf", "RecursiveArrayTools", "Reexport", "SciMLBase", "SciMLOperators", "SciMLStructures", "Setfield", "Static", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "TruncatedStacktraces"]
-git-tree-sha1 = "e9b34e0eb3443492f396c97e7fed08630752a4f2"
+git-tree-sha1 = "52af5ee5af4eb6ca03b3782bf65c1e5fc3024c86"
 uuid = "2b5f629d-d688-5b77-993f-72d75c75574e"
-version = "6.177.2"
+version = "6.178.0"
 
     [deps.DiffEqBase.extensions]
     DiffEqBaseCUDAExt = "CUDA"
@@ -1911,9 +1944,9 @@ version = "0.1.6"
 
 [[deps.FFMPEG_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "PCRE2_jll", "Zlib_jll", "libaom_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
-git-tree-sha1 = "8cc47f299902e13f90405ddb5bf87e5d474c0d38"
+git-tree-sha1 = "eaa040768ea663ca695d442be1bc97edfe6824f2"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
-version = "6.1.2+0"
+version = "6.1.3+0"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
@@ -2081,9 +2114,9 @@ version = "0.2.0"
 
 [[deps.GenericLinearAlgebra]]
 deps = ["LinearAlgebra", "Printf", "Random", "libblastrampoline_jll"]
-git-tree-sha1 = "ad599869948d79efd63a030c970e2c6e21fecf4a"
+git-tree-sha1 = "37cef077b50d28b2542c1adb4c5427871a759d12"
 uuid = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
-version = "0.3.17"
+version = "0.3.18"
 
 [[deps.GeometryBasics]]
 deps = ["EarCut_jll", "Extents", "IterTools", "LinearAlgebra", "PrecompileTools", "Random", "StaticArrays"]
@@ -2240,9 +2273,9 @@ version = "1.4.4"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
-git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
+git-tree-sha1 = "ec1debd61c300961f98064cfb21287613ad7f303"
 uuid = "1d5cc7b8-4909-519e-a0f8-d0f5ad9712d0"
-version = "2025.0.4+0"
+version = "2025.2.0+0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -2332,9 +2365,9 @@ version = "1.0.0"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "a007feb38b422fbdab534406aeca1b86823cb4d6"
+git-tree-sha1 = "0533e564aae234aff59ab625543145446d8b6ec2"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.7.0"
+version = "1.7.1"
 
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -2544,15 +2577,15 @@ version = "1.1.0"
 
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "oneTBB_jll"]
-git-tree-sha1 = "5de60bc6cb3899cd318d80d627560fae2e2d99ae"
+git-tree-sha1 = "282cadc186e7b2ae0eeadbd7a4dffed4196ae2aa"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2025.0.1+1"
+version = "2025.2.0+0"
 
 [[deps.MLJModelInterface]]
-deps = ["REPL", "Random", "ScientificTypesBase", "StatisticalTraits"]
-git-tree-sha1 = "66626f80d5807921045d539b4f7153b1d47c5f8a"
+deps = ["InteractiveUtils", "REPL", "Random", "ScientificTypesBase", "StatisticalTraits"]
+git-tree-sha1 = "ccaa3f7938890ee8042cc970ba275115428bd592"
 uuid = "e80e1ace-859a-464e-9ed9-23947d8ae3ea"
-version = "1.11.1"
+version = "1.12.0"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "PkgVersion", "PrecompileTools", "Requires", "Serialization", "Sockets"]
@@ -2593,9 +2626,9 @@ version = "0.5.16"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "ComputePipeline", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "InverseFunctions", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "PNGFiles", "Packing", "Pkg", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
-git-tree-sha1 = "8ca3fbbe6685f2fb232526cabe25ef471d520c37"
+git-tree-sha1 = "96d73e05b6f3079df0963b66c2844d162263a896"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.24.3"
+version = "0.24.4"
 
 [[deps.ManualMemory]]
 git-tree-sha1 = "bcaef4fc7a0cfe2cba636d84cda54b5e4e4ca3cd"
@@ -2813,9 +2846,9 @@ version = "1.26.2"
 
 [[deps.OrdinaryDiffEqTsit5]]
 deps = ["DiffEqBase", "FastBroadcast", "LinearAlgebra", "MuladdMacro", "OrdinaryDiffEqCore", "PrecompileTools", "Preferences", "RecursiveArrayTools", "Reexport", "Static", "TruncatedStacktraces"]
-git-tree-sha1 = "96552f7d4619fabab4038a29ed37dd55e9eb513a"
+git-tree-sha1 = "d0b069075f4a5e54b29e412419e5a733a83e6240"
 uuid = "b1df2697-797e-41e3-8120-5422d3b24e4a"
-version = "1.1.0"
+version = "1.2.0"
 
 [[deps.PCRE2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -3002,9 +3035,9 @@ version = "1.3.0"
 
 [[deps.PythonCall]]
 deps = ["CondaPkg", "Dates", "Libdl", "MacroTools", "Markdown", "Pkg", "Requires", "Serialization", "Tables", "UnsafePointers"]
-git-tree-sha1 = "ce4a33749e0061fa51dbe40533dc112bf7d2d28e"
+git-tree-sha1 = "f03464b21983fb5af2f8cea99106b8d8f48ac69d"
 uuid = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
-version = "0.9.25"
+version = "0.9.26"
 
 [[deps.QOI]]
 deps = ["ColorTypes", "FileIO", "FixedPointNumbers"]
@@ -3081,9 +3114,9 @@ version = "1.3.4"
 
 [[deps.RecursiveArrayTools]]
 deps = ["Adapt", "ArrayInterface", "DocStringExtensions", "GPUArraysCore", "IteratorInterfaceExtensions", "LinearAlgebra", "RecipesBase", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-git-tree-sha1 = "efc718978d97745c58e69c5115a35c51a080e45e"
+git-tree-sha1 = "4dd1a95cc16d5abdccc4eac5faf6bc73904be1a2"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "3.34.1"
+version = "3.35.0"
 
     [deps.RecursiveArrayTools.extensions]
     RecursiveArrayToolsFastBroadcastExt = "FastBroadcast"
@@ -3166,9 +3199,9 @@ version = "0.1.0"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "50c540cd0569d43d5cec57b9610e7f1361d3532d"
+git-tree-sha1 = "c9dc4c04bcb0146a35dd6af726073c5738b80e3b"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.103.1"
+version = "2.104.0"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"
@@ -3444,9 +3477,9 @@ version = "7.7.0+0"
 
 [[deps.SymbolicIndexingInterface]]
 deps = ["Accessors", "ArrayInterface", "PrettyTables", "RuntimeGeneratedFunctions", "StaticArraysCore"]
-git-tree-sha1 = "658f6d01bfe68d6bf47915bf5d868228138c7d71"
+git-tree-sha1 = "59ca6eddaaa9849e7de9fd1153b6faf0b1db7b80"
 uuid = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
-version = "0.3.41"
+version = "0.3.42"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -3507,9 +3540,9 @@ version = "0.11.4"
 
 [[deps.TimeZones]]
 deps = ["Artifacts", "Dates", "Downloads", "InlineStrings", "Mocking", "Printf", "Scratch", "TZJData", "Unicode", "p7zip_jll"]
-git-tree-sha1 = "2c705e96825b66c4a3f25031a683c06518256dd3"
+git-tree-sha1 = "1f9a3f379a2ce2a213a0f606895567a08a1a2d08"
 uuid = "f269a46b-ccf7-5d73-abea-4c690281aa53"
-version = "1.21.3"
+version = "1.22.0"
 weakdeps = ["RecipesBase"]
 
     [deps.TimeZones.extensions]
@@ -3669,15 +3702,15 @@ version = "0.2.3+0"
 
 [[deps.libaom_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "522c1df09d05a71785765d19c9524661234738e9"
+git-tree-sha1 = "4bba74fa59ab0755167ad24f98800fe5d727175b"
 uuid = "a4ae2306-e953-59d6-aa16-d00cac43593b"
-version = "3.11.0+0"
+version = "3.12.1+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "e17c115d55c5fbb7e52ebedb427a0dca79d4484e"
+git-tree-sha1 = "125eedcb0a4a0bba65b657251ce1d27c8714e9d6"
 uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
-version = "0.15.2+0"
+version = "0.17.4+0"
 
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -3750,22 +3783,26 @@ version = "10164.0.1+0"
 
 [[deps.x265_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "dcc541bb19ed5b0ede95581fb2e41ecf179527d2"
+git-tree-sha1 = "e7b67590c14d487e734dcb925924c5dc43ec85f3"
 uuid = "dfaa095f-4041-5dcd-9319-2fabd8486b76"
-version = "3.6.0+0"
+version = "4.1.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═83fd4129-f9bf-47af-a9ea-505511909ebe
-# ╟─c4e5c3ba-90b3-4845-9c0d-9a6c444d2657
+# ╟─83fd4129-f9bf-47af-a9ea-505511909ebe
+# ╟─2c753716-0af8-4e9a-ad79-e06eb35db64f
 # ╟─63ba95f0-0a04-11ee-30b5-65d2b018e857
-# ╠═fcc73c75-bb3b-4e05-ad49-95bced033e6a
+# ╟─38bd2812-84ed-4c07-a3c1-a647803b0541
 # ╟─6fc6fe75-b249-48cc-9e85-6c942cb56b86
 # ╟─26178e23-33e5-4294-bb03-c54b29fa6dd1
 # ╟─1c983ad9-bd78-422c-a703-97f0a3d08b91
+# ╟─573ac61e-7c9f-41cc-baa6-7c4216432f5e
 # ╟─787967f5-78f0-41d3-b786-078dfe3c5a8d
+# ╟─de2c0e2c-d462-4ba4-ade3-451e7c1c8783
 # ╟─2e9c1107-4378-4afb-b2e7-3c86f72473fa
+# ╟─5ddcd487-5751-45ad-94f5-801318818207
 # ╟─b80a8dd9-f3fd-4ff4-8190-3132e07762fc
+# ╟─03ee88c3-7ca8-4614-9c6d-bd8822d41482
 # ╟─faee4e9d-4e85-452b-87d1-4d85c96c677f
 # ╠═ba43faa3-6752-49ac-87e3-8dbd896ad38a
 # ╠═10eb2910-38b3-4102-8e8d-8ef8ec1e31d0
@@ -3837,6 +3874,7 @@ version = "3.6.0+0"
 # ╟─d5e1d232-4a88-45f1-ace5-0f2c1ba47423
 # ╟─5a3c565c-2a5f-436c-90ba-92ccbb39509d
 # ╟─7d5f4c81-6913-4bee-a8e0-e5fe01e436db
+# ╟─57e85657-b6de-4d47-94d8-02b54361293d
 # ╟─4be44ed7-b08e-4c6d-91ef-48e9a157b072
 # ╟─08a09de0-6950-4a8f-8068-9143857a3bd6
 # ╠═0e88ed74-261d-4aad-82dc-ed8076684406
@@ -3890,6 +3928,7 @@ version = "3.6.0+0"
 # ╟─4c128164-c772-4551-a108-c3c30500c571
 # ╟─74655914-6c3e-4c19-bf85-fa0a4035b1c3
 # ╟─345e9e3c-ce8c-4758-a5b7-cb027e4ef678
+# ╟─70ba8bc7-8cdc-49ae-bfa2-2e96f693c728
 # ╟─d53d1ed1-c0ab-4f3e-bac7-8db42371f596
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
