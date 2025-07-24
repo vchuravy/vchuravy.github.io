@@ -70,8 +70,8 @@ using StochasticRounding
 # ╔═╡ 76440f57-0381-423c-aa50-1fa830876b20
 using Statistics
 
-# ╔═╡ c4e5c3ba-90b3-4845-9c0d-9a6c444d2657
-ChooseDisplayMode()
+# ╔═╡ 2c753716-0af8-4e9a-ad79-e06eb35db64f
+
 
 # ╔═╡ 63ba95f0-0a04-11ee-30b5-65d2b018e857
 md"""
@@ -160,6 +160,9 @@ Pragmatic for many applications, but has drawbacks
 - One codebase to rule them all
 - Understandable and explorable performance
 
+!!! info
+    Native test-framework and wide-adoption of CI through-out the ecosystem!
+
 ## Julia now!
 
 - Recently released v1.11, comming soon v1.12
@@ -167,10 +170,6 @@ Pragmatic for many applications, but has drawbacks
 - Vibrant package ecosystem
 - Yearly developer conference, all talks and workshops on Youtube.
 - Excellent native GPU computing support
-  - NVIDIA
-  - AMD
-  - Intel
-  - Apple
 """
 
 # ╔═╡ 5ddcd487-5751-45ad-94f5-801318818207
@@ -515,10 +514,6 @@ end
 
 ### Crash course on multiple dispatch 🪨📜✂️
 
-From "[SIAM CSE19: Solving the Two Language Problem in Scientific Computing and Machine Learning with Julia](https://www.youtube.com/watch?v=OfMP5PTFQk0)" (acceptance speech for J. H. Wilkinson Prize 2019 for Numerical Software)
-
-$(Resource("https://i.imgur.com/QqUPohw.png"))
-
 _Based on the blogpost "[Rock–paper–scissors game in less than 10 lines of code](https://giordano.github.io/blog/2017-11-03-rock-paper-scissors)"._
 """
 
@@ -546,6 +541,9 @@ play(Scissors, Scissors)
 
 # ╔═╡ 5fc10869-ac5e-4440-ac36-eed90bffef8c
 @which play(Rock, Scissors)
+
+# ╔═╡ a9825a63-1915-45c7-afd8-cac52cf7330c
+play(Scissors, rand([Scissors, Paper, Rock]))
 
 # ╔═╡ c9418101-649a-4c12-812a-c9cf5cd10c6c
 
@@ -856,11 +854,11 @@ Julia and GPUArrays.jl provide support for an efficient GPU programming environm
 
 > Array operators using multiple dispatch: a design methodology for array implementations in dynamic languages 
 > 
-> (doi:10.1145/2627373.2627383)
+> [(doi:10.1145/2627373.2627383)](https://www.doi.org/10.1145/2627373.2627383)
 
 > Rapid software prototyping for heterogeneous and distributed platforms 
 >
-> (doi:10.1016/j.advengsoft.2019.02.002)
+> [(doi:10.1016/j.advengsoft.2019.02.002)](https://www.doi.org/10.1016/j.advengsoft.2019.02.002)
 """
 
 # ╔═╡ cf29f290-477e-4ac4-99dc-d4705d49ad0e
@@ -1035,100 +1033,6 @@ let
 	fig
 end
 
-# ╔═╡ 01ec595c-bab7-4067-8a6a-b1e0bd97e82c
-errorbars
-
-# ╔═╡ 2f11cc73-336d-4cf0-a8cd-5761090fe403
-md"""
-### Simple pendulum
-#### Small angles approximation
-"""
-
-# ╔═╡ c65a27f9-7ad9-4ee4-9fce-6eec2baf34a0
-g = (9.79 ± 0.02); # Gravitational constants
-
-# ╔═╡ 9cd70d32-94e7-44fa-8d4d-ef8daa2aa424
-L = (1.00 ± 0.01); # Length of the pendulum
-
-# ╔═╡ 493a3b23-e1cb-4dd7-ba34-3fd92340acde
-begin
-	# Initial Conditions
-	u₀_small_pendulum = [(0 ± 0), (π / 60) ± 0.01] # Initial speed and initial angle
-	tspan_small_pendulum = (0.0, 6.3)
-end
-
-# ╔═╡ 51a938fa-18a3-49ed-9c6b-f14e9fd952d0
-# Define the problem
-function simplependulum(du, u, p, t)
-    θ  = u[1]
-    dθ = u[2]
-    du[1] = dθ
-    du[2] = -(g / L) * θ
-end
-
-# ╔═╡ cdc65ab3-2ce1-484e-8479-5c7c65b103c4
-begin
-	# Pass to solvers
-	prob_small_pendulum = ODEProblem(simplependulum, u₀_small_pendulum, tspan_small_pendulum)
-	sol_small_pendulum = solve(prob_small_pendulum, Tsit5(), reltol = 1e-6)
-end
-
-# ╔═╡ c39a63c1-5e3d-415a-bde9-1ecd76e3230f
-md"""
-#### Arbitrary amplitude
-"""
-
-# ╔═╡ 2a95abc8-9347-4a8d-b5fe-342fa48694b9
-# Analytic solution
-u_small_pendulum = u₀_small_pendulum[2] .* cos.(sqrt(g / L) .* sol_small_pendulum.t)
-
-# ╔═╡ a75a9b45-3e13-4118-a7e8-e5256650a10e
-@bind small_plot MultiCheckBox(["Numerical", "Analytic"]; default=["Numerical", "Analytic"])
-
-# ╔═╡ 1b01f151-bd9b-4b14-a649-9f4bfb78af17
-let
-	fig = Figure()
-	ax = Axis(fig[1,1], title="Solution")
-	if "Numerical" in small_plot
-		lines!(ax, sol_small_pendulum.t, sol_small_pendulum[2, :];
-			   label = "Numerical")
-		errorbars!(ax, sol_small_pendulum.t, sol_small_pendulum[2, :],
-				   label = "Numerical", whiskerwidth = 7)
-	end
-	if "Analytic" in small_plot
-		lines!(ax, sol_small_pendulum.t, u_small_pendulum;
-			   label = "Analytic")
-		errorbars!(ax, sol_small_pendulum.t, u_small_pendulum;
-				   label = "Analytic", whiskerwidth = 7)
-
-	end
-	axislegend(ax; merge=true)
-	ax2 = Axis(fig[2,1], title="Error")
-	lines!(ax2, sol_small_pendulum.t, sol_small_pendulum[2, :] .- u_small_pendulum)
-	fig
-end
-
-# ╔═╡ 53912761-8954-4d45-9eef-a2f0c5604d93
-begin
-	# Initial Conditions
-	u₀_arbitrary_pendulum = [0 ± 0, π / 3 ± 0.02] # Initial speed and initial angle
-	tspan_arbitrary_pendulum = (0.0, 6.3)
-end
-
-# ╔═╡ f15ad6e9-3463-49c9-b09b-923a05ebe262
-begin
-	# Pass to solvers
-	prob_arbitrary_pendulum = ODEProblem(simplependulum, u₀_arbitrary_pendulum, tspan_arbitrary_pendulum)
-	sol_arbitrary_pendulum = solve(prob_arbitrary_pendulum, Tsit5(), reltol = 1e-6)
-end
-
-# ╔═╡ ccb61eb1-489d-4a74-b589-75c6eb153de0
-let
-	fig, ax, _ = lines(sol_arbitrary_pendulum.t, sol_arbitrary_pendulum[2, :]; label="Numerical")
-	errorbars!(sol_arbitrary_pendulum.t, sol_arbitrary_pendulum[2, :], whiskerwidth=7)
-	fig
-end
-
 # ╔═╡ c79b4ac1-2ddd-49ee-a32c-66bee0fd9d21
 md"""
 ## Support for a diverse set of numerical datatypes
@@ -1192,7 +1096,7 @@ let
 	fig = Figure()
 	ax = Axis(fig[1,1], title="Accumulative Error", ylabel="Error", xlabel="Number of summations")
 	r = 1:length(x)
-	err = cumsum(x) .- (0.9 .* r)
+	err = map(N->foldl(+, view(x, 1:N)), r) .- (0.9 .* r)
 	lines!(ax, r, err)
 	fig
 end
@@ -1208,8 +1112,9 @@ let
 	fig = Figure()
 	ax = Axis(fig[1,1], title="Accumulative Error (Stochastic Rounding)", ylabel="Error", xlabel="Number of summations")
 	r = 1:length(x_sr)
-	for i in 1:3
-		err = cumsum(x_sr) .- (0.9 .* r)
+	for i in 1:5
+		# err = cumsum(x_sr) .- (0.9 .* r)
+		err = accumulate(+, x_sr) .- (0.9 .* r)
 		lines!(ax, r, err)
 	end
 	fig
@@ -3843,6 +3748,7 @@ version = "4.1.0+0"
 # ╠═686ff2ce-1f6d-435a-b93b-0d7c9ba6f680
 # ╠═ec185c9f-7909-47d8-8cc6-05b252d72a5d
 # ╠═5fc10869-ac5e-4440-ac36-eed90bffef8c
+# ╠═a9825a63-1915-45c7-afd8-cac52cf7330c
 # ╟─c9418101-649a-4c12-812a-c9cf5cd10c6c
 # ╟─f09b6ee6-eea3-480f-b7b8-395b1575fdbe
 # ╟─d928bb49-1cd2-444a-a8bc-1076ff4647fd
@@ -3869,7 +3775,7 @@ version = "4.1.0+0"
 # ╟─148b545d-4d38-432e-885f-f6f712c3f12f
 # ╟─9358f02a-273d-4747-9dc8-34994e087375
 # ╟─f1d654bb-a970-440d-8591-8363618fb9f7
-# ╠═ff999e4d-9581-44f7-9ef3-47c496fec310
+# ╟─ff999e4d-9581-44f7-9ef3-47c496fec310
 # ╟─cf29f290-477e-4ac4-99dc-d4705d49ad0e
 # ╟─d5e1d232-4a88-45f1-ace5-0f2c1ba47423
 # ╟─5a3c565c-2a5f-436c-90ba-92ccbb39509d
@@ -3887,20 +3793,6 @@ version = "4.1.0+0"
 # ╠═42f4e4dd-a760-4920-98db-103185337f47
 # ╟─f4007ce0-f608-4288-bf8c-9da751f47e89
 # ╟─c0ce6535-542e-4b7f-95e8-880109981aa6
-# ╠═01ec595c-bab7-4067-8a6a-b1e0bd97e82c
-# ╟─2f11cc73-336d-4cf0-a8cd-5761090fe403
-# ╠═c65a27f9-7ad9-4ee4-9fce-6eec2baf34a0
-# ╠═9cd70d32-94e7-44fa-8d4d-ef8daa2aa424
-# ╠═493a3b23-e1cb-4dd7-ba34-3fd92340acde
-# ╠═51a938fa-18a3-49ed-9c6b-f14e9fd952d0
-# ╠═cdc65ab3-2ce1-484e-8479-5c7c65b103c4
-# ╟─c39a63c1-5e3d-415a-bde9-1ecd76e3230f
-# ╠═2a95abc8-9347-4a8d-b5fe-342fa48694b9
-# ╟─a75a9b45-3e13-4118-a7e8-e5256650a10e
-# ╟─1b01f151-bd9b-4b14-a649-9f4bfb78af17
-# ╠═53912761-8954-4d45-9eef-a2f0c5604d93
-# ╠═f15ad6e9-3463-49c9-b09b-923a05ebe262
-# ╟─ccb61eb1-489d-4a74-b589-75c6eb153de0
 # ╟─c79b4ac1-2ddd-49ee-a32c-66bee0fd9d21
 # ╟─2b833425-088e-4319-844a-785faf316756
 # ╠═26352f5f-fb5d-4810-b990-75390e560e67
@@ -3919,7 +3811,7 @@ version = "4.1.0+0"
 # ╠═17ad78e6-43ca-44ea-bcae-15e52bde7851
 # ╠═0e254ca8-b0d8-4d64-96ae-e54501f9b744
 # ╠═1bac2902-10ef-46cc-8f75-f5326bbdc64b
-# ╟─00f773b8-c632-436d-af00-b599e68fd9e1
+# ╠═00f773b8-c632-436d-af00-b599e68fd9e1
 # ╟─02fb1cf1-cacb-4676-a1a1-4c43fdde2bb4
 # ╟─2b10fe3c-f116-4cf1-ad32-48072f1353a3
 # ╟─2ce2e87f-56a1-4ae7-a771-7bf3fc2de3cb
