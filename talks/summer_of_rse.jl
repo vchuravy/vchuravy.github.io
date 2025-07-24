@@ -2,7 +2,7 @@
 # v0.20.13
 
 #> [frontmatter]
-#> title = "Introduction"
+#> title = "Summer of Programming Languages: Julia"
 #> license = "MIT"
 #> 
 #>     [[frontmatter.author]]
@@ -75,8 +75,12 @@ ChooseDisplayMode()
 
 # ╔═╡ 63ba95f0-0a04-11ee-30b5-65d2b018e857
 md"""
-# Julia for Research Software Engineering
+# Summer of Programming Languages: Julia
+**Julia for Research Software Engineering**
 """
+
+# ╔═╡ fcc73c75-bb3b-4e05-ad49-95bced033e6a
+
 
 # ╔═╡ 6fc6fe75-b249-48cc-9e85-6c942cb56b86
 md"""
@@ -87,13 +91,14 @@ RSE/PostDoc working on the Julia compiler and runtime.
 My goal is to make HPC and GPU based programming easier and more accessible,
 I work with science teams to help them maximise their usage of Julia.
 
-Bottom-up view point. (I may go too much into the weeds).
-
 ###### Mosè Giordano
 
 RSE at UCL, working of various HPC-related projects.
 My not-so-secret mission is to spread the use of Julia in HPC.
 """
+
+# ╔═╡ 26178e23-33e5-4294-bb03-c54b29fa6dd1
+
 
 # ╔═╡ 1c983ad9-bd78-422c-a703-97f0a3d08b91
 md"""
@@ -113,13 +118,8 @@ Main paradigm of Julia is multiple dispatch, what functions do depend on type an
 md"""
 ## Why Julia? 😍
 
-From "[My Target Audience](https://scientificcoder.com/my-target-audience)" by Matthijs Cox:
-
-$(Resource("https://cdn.hashnode.com/res/hashnode/image/upload/v1681735971356/91b6e886-7ce1-41a3-9d9f-29b7b096e7f2.png"))
-$(Resource("https://cdn.hashnode.com/res/hashnode/image/upload/v1681735992315/62fdd58f-4630-4120-8eb4-5238740543e8.png"))
-
 * Explorable & Understandable
-* Composability thanks to multiple dispatch (ask me more about this at the end!)
+* Composability thanks to multiple dispatch
 * User-defined types are as fast and compact as built-ins
 * Code that is close to the mathematics
 * No need to switch languages for performance...
@@ -154,8 +154,7 @@ Pragmatic for many applications, but has drawbacks
 
 ## Julia now!
 
-- Recently released v1.9, comming soon v1.10
-- Focus on solving latency and infrastructure issues
+- Recently released v1.11, comming soon v1.12
 - Stable language foundation
 - Vibrant package ecosystem
 - Yearly developer conference, all talks and workshops on Youtube.
@@ -164,7 +163,6 @@ Pragmatic for many applications, but has drawbacks
   - AMD
   - Intel
   - Apple
-- Experimental support for accelerators like Graphcore IPU.
 """
 
 # ╔═╡ b80a8dd9-f3fd-4ff4-8190-3132e07762fc
@@ -183,10 +181,10 @@ curl -fsSL https://install.julialang.org | sh
 
 ##### Resources
 
-- https://modernjuliaworkflows.org
-- https://discourse.julialang.org
-- https://docs.julialang.org
-- https://julialang.org/community/#events
+- Modern Julia Workflows: [https://modernjuliaworkflows.org](https://modernjuliaworkflows.org)
+- Discourse: [https://discourse.julialang.org](https://discourse.julialang.org)
+- Documentation: [https://docs.julialang.org](https://docs.julialang.org)
+- Community Calendar: [https://julialang.org/community/#events](https://julialang.org/community/#events)
 
 """
 
@@ -305,50 +303,78 @@ let
 	newton(f, n, -10:0.01:10, x0, -10, 70)
 end
 
+# ╔═╡ 6c5188ae-10b0-4124-b68b-9d86acbf35de
+
+
 # ╔═╡ 299f10aa-0ba7-4e67-a4f5-b2a885b379b3
 md"""
 ## Package manager
 
+One package manager, provided together with the language. 
+
+- Native notion of "environment"
 - `Project.toml`: Describes the dependencies and compatibilities
 - `Manifest.toml`: Record of precise versions of all direct & indirect dependencies
 
-```
-(@v1.5) pkg> st
-Status `~/.julia/environments/v1.5/Project.toml`
-  [7da242da] Enzyme v0.3.0
 
-(@v1.5) pkg> up
-   Updating registry at `~/.julia/registries/General`
-############################################### 100.0%
-Updating `~/.julia/environments/v1.5/Project.toml`
-  [7da242da] ↑ Enzyme v0.3.0 ⇒ v0.3.1
-Updating `~/.julia/environments/v1.5/Manifest.toml`
-  [7da242da] ↑ Enzyme v0.3.0 ⇒ v0.3.1
-  [7cc45869] ↑ Enzyme_jll v0.0.5+0 ⇒ v0.0.6+0
+"""
+
+# ╔═╡ d4e70769-687f-46ab-9fbf-a959c2b12f9c
+md"""
+```sh
+> julia --project=example
+```
+
+```
+(example) pkg> add BenchmarkTools
+   Resolving package versions...
+    Updating `~/example/Project.toml`
+  [6e4b80f9] + BenchmarkTools v1.6.0
+    Updating `~/example/Manifest.toml`
+  [6e4b80f9] + BenchmarkTools v1.6.0
+  [34da2185] + Compat v4.17.0
+  [682c06a0] + JSON v0.21.4
+    ...
+```
+
+```
+(example) pkg> status
+Status `~/example/Project.toml`
+  [6e4b80f9] BenchmarkTools v1.6.0
+```
+
+```
+(example) pkg> rm BenchmarkTools
+    Updating `~/example/Project.toml`
+  [6e4b80f9] - BenchmarkTools v1.6.0
+    Updating `~/example/Manifest.toml`
+  [6e4b80f9] - BenchmarkTools v1.6.0
+  [34da2185] - Compat v4.17.0
+  [682c06a0] - JSON v0.21.4
 ```
 """
 
-# ╔═╡ 9eff214c-5d30-43e2-b885-773ad31f2012
-TODO("Expand this")
-
 # ╔═╡ d022561a-780b-4964-86e4-db47a408ed54
 md"""
-### Yggdrasil & BinaryBuilder.jl
+### Binaries included
+
+!!! note
+    Major usability pain points of modern languages is the integration of dependencies from C/C++, reliably across multiple operating systems.
+
+Julia provides JLL packages that wrap binaries, and automatically install the **right** one for your current platforms.
+
+Uses:
 
 - Binarybuilder: (https://binarybuilder.org/)
   - Sandboxed cross-compiler
   - Encodes best practices
 
-- JLL Packages: 
-  - Binary dependencies packaged as Artifacts 
-
-- Yggdrasil:
+- Yggdrasil: (https://github.com/JuliaPackaging/Yggdrasil/)
   - Collection of build recipes
-
-> What’s new in Pkg: Artifacts & Binaries
->
-> https://www.youtube.com/watch?v=xPhnJCAkI4k 
 """
+
+# ╔═╡ 54793dd0-52ed-4c07-a75d-cf9132c00647
+
 
 # ╔═╡ 23a741a2-63e7-4eb4-aa2c-55fa888fd27d
 md"""
@@ -410,6 +436,9 @@ end
 ```
 """
 
+# ╔═╡ 8b6e60f0-a09b-41c9-a8bb-90c5b9086870
+
+
 # ╔═╡ ef7e56fe-7950-4346-9992-b67b2ddbaf78
 md"""
 ### Interaction with Python
@@ -449,6 +478,9 @@ end
 # ╔═╡ b07c4d06-8b81-40c3-ad25-0edd4cced919
 pairplot_by(iris, :Species)
 
+# ╔═╡ dd245fa6-91db-4cf4-82df-ee5869dc26be
+
+
 # ╔═╡ 456e3273-7bcf-4c98-9a31-732ad5d312dd
 md"""
 ## Types and multiple dispatch
@@ -465,7 +497,7 @@ struct Dual{T<:Number} <: Number
 end
 ```
 
-**Not** object-oriented (object-confused ;), but multiple-dispatch/multi-methods based.
+**Not** object-oriented, but multiple-dispatch/multi-methods based.
 
 ### Crash course on multiple dispatch 🪨📜✂️
 
@@ -501,6 +533,9 @@ play(Scissors, Scissors)
 # ╔═╡ 5fc10869-ac5e-4440-ac36-eed90bffef8c
 @which play(Rock, Scissors)
 
+# ╔═╡ c9418101-649a-4c12-812a-c9cf5cd10c6c
+
+
 # ╔═╡ f09b6ee6-eea3-480f-b7b8-395b1575fdbe
 md"""
 ## What makes a language dynamic?
@@ -521,6 +556,9 @@ Dynamic semantics are a **spectrum**
 
 Julia has a dynamic type system, open-world semantics, but struct layout is static.
 """
+
+# ╔═╡ d928bb49-1cd2-444a-a8bc-1076ff4647fd
+
 
 # ╔═╡ c379062d-8b73-4b2a-a1ea-3ed2175ab7d8
 md"""
@@ -555,6 +593,9 @@ end
 with_terminal() do
 	@code_native debuginfo=:none 1.0 + 2.0
 end
+
+# ╔═╡ 04c84b54-ad4e-4dea-b858-4ec17c25ab0e
+
 
 # ╔═╡ 3630cd0e-2fb7-4de8-aebf-559933164a61
 md"""
@@ -646,6 +687,9 @@ end
 # ╔═╡ 52047e5f-8e1f-4587-a24b-7aab97dd4b6d
 our_π = sum(pis)
 
+# ╔═╡ 20422ed4-459b-4486-87fd-afc27d00fc07
+
+
 # ╔═╡ 1914c723-d9cd-4269-9a3d-ce617c854ce4
 md"""
 ## GPU computing in Julia
@@ -656,10 +700,10 @@ md"""
 ### Composable infrastructure
 
 #### Core
-- GPUCompiler.jl: Takes native Julia code and compiles it directly to GPUs
-- GPUArrays.jl: High-level array based common functionality
-- KernelAbstractions.jl: Vendor-agnostic kernel programming language
-- Adapt.jl: Translate complex structs across the host-device boundary
+- [GPUCompiler.jl](https://github.com/JuliaGPU/GPUCompiler.jl): Takes native Julia code and compiles it directly to GPUs
+- [GPUArrays.jl](https://github.com/JuliaGPU/GPUArrays.jl): High-level array based common functionality
+- [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl): Vendor-agnostic kernel programming language
+- [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl): Translate complex structs across the host-device boundary
 
 #### Vendor specific
 - [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)
@@ -708,16 +752,6 @@ saxpy!(CUDABackend())(a, X, Y, ndrange=length(Y))
 Y .= a .* X .+ Y
 ```
 
-"""
-
-# ╔═╡ 9358f02a-273d-4747-9dc8-34994e087375
-md"""
-#### Asynchronous operations
-
-!!! warn
-    GPU operations are asynchronous with regards to the host! They are **ordered** with respect to each other, but special care must be taken when using Julia's task based programming together with GPU programming.
-
-The JuliaGPU ecosystem **synchronizes** the GPU on access, so when you move data from and to the GPU we wait for all the kernels to finish!
 """
 
 # ╔═╡ f8177941-5884-4233-985d-e7142e6c064b
@@ -770,10 +804,20 @@ vadd_kernel(a, b, c; ndrange=size(c))
 ```
 """)
 
+# ╔═╡ 9358f02a-273d-4747-9dc8-34994e087375
+md"""
+#### Asynchronous operations
+
+!!! warn
+    GPU operations are asynchronous with regards to the host! They are **ordered** with respect to each other, but special care must be taken when using Julia's task based programming together with GPU programming.
+
+The JuliaGPU ecosystem **synchronizes** the GPU on access, so when you move data from and to the GPU we wait for all the kernels to finish!
+"""
+
 # ╔═╡ f1d654bb-a970-440d-8591-8363618fb9f7
 md"""
 !!! note
-	GPU execution is asynchronous! We will discuss the details in the later GPU lecture. When benchmarking you need to synchronize the device!
+	When benchmarking you need to synchronize the device!
 
 	```julia
 		@benchmark begin 
@@ -3715,7 +3759,9 @@ version = "3.6.0+0"
 # ╠═83fd4129-f9bf-47af-a9ea-505511909ebe
 # ╟─c4e5c3ba-90b3-4845-9c0d-9a6c444d2657
 # ╟─63ba95f0-0a04-11ee-30b5-65d2b018e857
+# ╠═fcc73c75-bb3b-4e05-ad49-95bced033e6a
 # ╟─6fc6fe75-b249-48cc-9e85-6c942cb56b86
+# ╟─26178e23-33e5-4294-bb03-c54b29fa6dd1
 # ╟─1c983ad9-bd78-422c-a703-97f0a3d08b91
 # ╟─787967f5-78f0-41d3-b786-078dfe3c5a8d
 # ╟─2e9c1107-4378-4afb-b2e7-3c86f72473fa
@@ -3735,12 +3781,15 @@ version = "3.6.0+0"
 # ╟─ed67a442-9891-4018-adc4-eef06c3efba7
 # ╠═55c3f97d-509b-407d-b26c-9c6ac5f96936
 # ╠═2573aee2-3cef-430f-a4eb-0e5bf29e2c21
+# ╟─6c5188ae-10b0-4124-b68b-9d86acbf35de
 # ╟─299f10aa-0ba7-4e67-a4f5-b2a885b379b3
-# ╠═9eff214c-5d30-43e2-b885-773ad31f2012
+# ╟─d4e70769-687f-46ab-9fbf-a959c2b12f9c
 # ╟─d022561a-780b-4964-86e4-db47a408ed54
+# ╟─54793dd0-52ed-4c07-a75d-cf9132c00647
 # ╟─23a741a2-63e7-4eb4-aa2c-55fa888fd27d
 # ╟─b1dcb967-cfd4-4961-9c70-d9e027be5eee
 # ╟─2497e952-8220-46e5-a1c5-4c24631bc026
+# ╟─8b6e60f0-a09b-41c9-a8bb-90c5b9086870
 # ╟─ef7e56fe-7950-4346-9992-b67b2ddbaf78
 # ╠═ded87217-cdc0-48de-9bbd-d5ac81f2f873
 # ╠═1a7f20f9-a69c-49a2-a012-ed59657cc29f
@@ -3750,18 +3799,22 @@ version = "3.6.0+0"
 # ╠═03ee0f1f-ca85-4690-83c1-22dcb3519f09
 # ╠═e492bead-3364-4f53-82d1-de15bc50d411
 # ╠═b07c4d06-8b81-40c3-ad25-0edd4cced919
+# ╟─dd245fa6-91db-4cf4-82df-ee5869dc26be
 # ╟─456e3273-7bcf-4c98-9a31-732ad5d312dd
 # ╠═8f2437a9-45cf-4f8b-9808-11126097928d
 # ╠═7278d4e8-322e-43d6-ab8d-b306c661fbc6
 # ╠═686ff2ce-1f6d-435a-b93b-0d7c9ba6f680
 # ╠═ec185c9f-7909-47d8-8cc6-05b252d72a5d
 # ╠═5fc10869-ac5e-4440-ac36-eed90bffef8c
+# ╟─c9418101-649a-4c12-812a-c9cf5cd10c6c
 # ╟─f09b6ee6-eea3-480f-b7b8-395b1575fdbe
+# ╟─d928bb49-1cd2-444a-a8bc-1076ff4647fd
 # ╟─c379062d-8b73-4b2a-a1ea-3ed2175ab7d8
 # ╠═639f9f11-aa65-473b-b24d-44f60b913d83
 # ╠═e42751a8-be45-418e-854d-6802ae47d8cd
 # ╠═42f1ca4e-2a03-47a7-be15-20a67c25f020
 # ╠═9c5fb5b0-76b6-4ff8-b4ba-f6a66754241f
+# ╟─04c84b54-ad4e-4dea-b858-4ec17c25ab0e
 # ╟─3630cd0e-2fb7-4de8-aebf-559933164a61
 # ╠═e036e0b1-60f5-4670-9956-15e74d010ee9
 # ╟─0f4a5c91-93cb-4677-afaa-2de023353b23
@@ -3771,14 +3824,15 @@ version = "3.6.0+0"
 # ╠═60264a97-d85f-44ef-9012-cc2c3e8b4e03
 # ╠═52047e5f-8e1f-4587-a24b-7aab97dd4b6d
 # ╠═fa98c58b-e61b-4762-a89f-58cf6b5a50d0
+# ╟─20422ed4-459b-4486-87fd-afc27d00fc07
 # ╟─1914c723-d9cd-4269-9a3d-ce617c854ce4
 # ╟─9532853d-67b2-4980-a7ea-3fc872694d92
 # ╟─fe95495e-674f-4d0a-a330-8ee9b0d91b6a
-# ╟─9358f02a-273d-4747-9dc8-34994e087375
 # ╟─f8177941-5884-4233-985d-e7142e6c064b
 # ╟─148b545d-4d38-432e-885f-f6f712c3f12f
+# ╟─9358f02a-273d-4747-9dc8-34994e087375
 # ╟─f1d654bb-a970-440d-8591-8363618fb9f7
-# ╟─ff999e4d-9581-44f7-9ef3-47c496fec310
+# ╠═ff999e4d-9581-44f7-9ef3-47c496fec310
 # ╟─cf29f290-477e-4ac4-99dc-d4705d49ad0e
 # ╟─d5e1d232-4a88-45f1-ace5-0f2c1ba47423
 # ╟─5a3c565c-2a5f-436c-90ba-92ccbb39509d
