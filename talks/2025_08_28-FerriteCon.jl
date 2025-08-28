@@ -6,8 +6,17 @@ using InteractiveUtils
 
 # ╔═╡ 665c5ded-f7ad-4a4c-a295-69f82aab5495
 begin
-	using PlutoUI
-	using PlutoTeachingTools
+	using PlutoUI, PlutoTeachingTools
+	using PlutoUI: Slider
+end
+
+# ╔═╡ 00c1a967-c4e2-44e8-b6f9-85ea65c654be
+begin
+	using CairoMakie
+	set_theme!(theme_latexfonts();
+			   fontsize = 16,
+			   Lines = (linewidth = 2,),
+			   markersize = 16)
 end
 
 # ╔═╡ 9d422306-9c7b-4efd-bd8d-a0b80dcc139a
@@ -19,16 +28,14 @@ using LinearAlgebra
 # ╔═╡ ae5bb7ac-ade2-4ef9-8d83-84cf3215612c
 using Enzyme
 
-# ╔═╡ c9508a0b-6220-49b2-b9fb-727174525a57
-begin 
-	using CairoMakie
-end
+# ╔═╡ f488d269-bea7-4a96-b7a6-8aade72aa576
+using SparseArrays
 
-# ╔═╡ 1199f445-3af6-48b6-ae9b-7c77879fb9d4
-PlutoUI.TableOfContents(; depth=4)
+# ╔═╡ ba0a191d-1dc2-454d-80cd-79fe0c739c00
+using Krylov
 
 # ╔═╡ 2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
-
+ChooseDisplayMode()
 
 # ╔═╡ b0448824-81ea-11f0-3d7a-bd269696aca6
 html"""
@@ -73,8 +80,6 @@ I work with science teams to help them maximise their usage of Julia.
 4. Ph.D. Computer Science, 2024
    JuliaLab@MIT
 5. RSE/PostDoc in Augsburg & Mainz -- High-Performance Scientific Computing
-
-
 """
 
 # ╔═╡ 177bd814-0795-48fb-8049-ce8d12bf1025
@@ -90,24 +95,79 @@ f'(x) = \lim_{h\rightarrow 0} \frac{f(a+h)-f(a)}{h}
 ### Used in many places
 
 - Optimization problems
+- Implicit time-integration
+- Non-linear problems
 - Parameter estimation
 - Uncertainity quantification
 - Machine learning
 """
 
-# ╔═╡ d891fbdc-59de-4179-85e1-986cd5221c50
+# ╔═╡ de43f959-683c-44e5-8836-8239a0386997
+begin
+    N(xᵢ, θ) = θ[1] * xᵢ^2 + θ[2] * xᵢ
+    S(xᵢ, cᵢ) = xᵢ + cᵢ
+end
+
+# ╔═╡ cac6333c-caa3-4eef-8462-b62d8b802d3d
+function simulate(N, S, x₀, y, θ, n)
+    xᵢ = x₀
+    for i in 1:n
+        cᵢ = N(xᵢ, θ)
+        xᵢ = S(xᵢ, cᵢ)
+    end
+    return L = 1 / 2 * (xᵢ - y)^2
+end
+
+# ╔═╡ 4876df7e-0545-41d6-83ff-56f629ad85c0
+function ∇simulate(N, S, x₀, y, θ, n)
+    dθ = MixedDuplicated(θ, Ref(Enzyme.make_zero(θ)))
+    Enzyme.autodiff(Enzyme.Reverse, simulate, Const(N), Const(S), Const(x₀), Const(y), dθ, Const(n))
+    return dθ.dval[]
+end
+
+# ╔═╡ 3e17838b-83c0-4b78-a5a5-44587a984bae
 md"""
-## Julia language features
+## Differentiable programming
+
+Tensorflow/PyTorch/Jax are domain-specific languages (DSL) for machine learning that use automatic differentiation to "learn"/optimize neuronal networks.
+
+They can be used for scientific programming as well, but have frustrating limitations to work around.
+"""
+
+# ╔═╡ dade7d3c-4b53-4f7a-a63b-82d338512557
+TwoColumn(
+md"""
+### Machine Learning
+- High-level operations
+- Functional
+- Limited control-flow
+- Automated parallelism (due to HLO and batches)
+""",
+md"""
+### Scientific programming
+- Fine-grained operations
+- Inplace/Mutation
+- Full control-flow
+- Varied parallelism
+""")
+
+# ╔═╡ db23cb48-9fc1-40f1-b3f9-96025a5a2343
+md"""
+## Scientific programming in Julia
+"""
+
+# ╔═╡ 49f8208e-20fd-438d-804f-3f44359fc6a6
+TwoColumn(
+md"""
+### Julia
 - High-level, yet low-level when needed
 - Dynamic
 - Multiple-dispatch
-- Classical "declarative"
+- Classical "imperative"
 - Types can be "immutable" or "mutable"
-"""
-
-# ╔═╡ d09db83c-6674-47fd-a423-4ee1ddc757b1
+""",
 md"""
-## HPC application wants
+### HPC application wants
 - Fine-grained operations
 - Inplace/mutation
 - Parallelism
@@ -115,22 +175,11 @@ md"""
   - MPI
   - GPUs
 """
+)
 
 # ╔═╡ 95776f94-e0e5-4a72-8a48-f16e177a750b
 md"""
 ## Fine-grained
-
-### Example: Taylor series-esque function
-
-```julia
-function taylor(x, N)
-	sum = 0 * x
-	for i in 1:N
-		sum += x^i/i
-	end
-	return sum
-end
-```
 """
 
 # ╔═╡ 01847641-ce9c-4717-add6-68a091fe9bb6
@@ -141,6 +190,20 @@ function taylor(x, N)
 	end
 	return sum
 end
+
+# ╔═╡ eb358263-a6dc-4971-b13a-7fb1ac897549
+md"""
+## Control-flow
+
+```julia
+res = F(u)
+while norm(res) >= tol
+	J = assemble_jacobian!(F, u)
+	u .+= J \ -res
+    res = F(u)
+end
+```
+"""
 
 # ╔═╡ ac00a927-cf53-4176-aa58-3ae99203f6ab
 md"""
@@ -178,12 +241,12 @@ end
 
 # ╔═╡ a8301438-511d-462c-a759-6c5a1bf9d801
 md"""
-## How can we obtain derivatives of programs
+# How can we obtain derivatives of programs
 """
 
 # ╔═╡ 52f4e73a-7a3f-48fc-9994-4c18661910c7
 md"""
-### Numerical differentiation / Finite differences
+## Numerical differentiation / Finite differences
 """
 
 # ╔═╡ fae1668d-9761-4e83-968b-a90266b442de
@@ -200,9 +263,19 @@ end
 # ╔═╡ f22e0e4b-63e6-4117-b867-fb714b0e8f51
 finite_differences(x->taylor(x, 8), 0.5)
 
+# ╔═╡ ba4b4c9b-7b49-4afc-9815-abebb8173611
+md"""
+## Limitations
+
+- Numerical issues
+- Choice of ϵ
+- Admissabilty 
+  (`f` defined over interval; evaluation at the edges of interface)
+"""
+
 # ╔═╡ 49b152ce-918c-4fa9-a0c9-94ff78be9d98
 md"""
-### Symbolic differentiation
+## Symbolic differentiation
 """
 
 # ╔═╡ d194abf2-0e47-4a8d-b7ac-1f5192abdbb2
@@ -223,27 +296,132 @@ substitute(d_ex, v_x=>0.5)
 # ╔═╡ 94de6dad-68ea-4d5e-a76e-ef0829310edc
 d_taylor(0.5)
 
+# ╔═╡ ad79adf5-c03d-4499-8258-b1add2f6c636
+md"""
+## Limitations
+"""
+
+# ╔═╡ 14b40f50-defd-420c-86da-59a3084113f9
+md"""
+Symbolic differentiation is quite powerful, but the complexity of expressions with loops grows quickly. Additionally it cannot handle algorithms whose behavior or control-flow depend on the specific values of symbols.
+"""
+
+# ╔═╡ 4bf55868-449e-4c37-a07c-68479a772b70
+my_abs(x) = x <= 0 ? -x : x
+
+# ╔═╡ fd8b95b8-cefe-42ab-a7d0-a9b84471d66f
+my_abs(v_x)
+
 # ╔═╡ ce2631c0-ea8b-4faa-8a4a-5908f87bf760
 md"""
-### Automatic differentiation / Algebraic differentiation
+## Automatic differentiation / Algebraic differentiation
 """
+
+# ╔═╡ 771e861c-3d35-4cfc-996f-a937acef3189
+g(x) = log(x^2 + exp(sin(x)))
 
 # ╔═╡ e62da3de-de5a-4c5f-b943-975c1971b728
 md"""
 ### AD: Source-rewriting
+
+Synthesize from the "written" definition of a program using the chain-rule a version that also calculates the derivative. 
+"""
+
+# ╔═╡ 76904814-1460-4e60-a8d2-1bbb188196b8
+TwoColumn(
+md"""
+```julia
+function g(x)
+	c1 = x^2
+	c2 = sin(x)
+	c3 = exp(c2)
+	c4 = c1 + c3
+	c5 = log(c4)
+	return c5
+end
+```
+""",
+md"""
+```julia
+function δ_g(x, x_ϵ=one(x)))
+	c1 = x^2
+	c1_ε = x * x_ϵ + x_ϵ * x # 2x
+	
+	c2 = sin(x)
+	c2_ε = cos(x) * x_ϵ
+	
+	c3 = exp(c2)
+	c3_ε = exp(c2) * c2_ε
+	
+	c4 = c1 + c3
+	c4_ε = c1_ε + c3_ε
+	
+	c5 = log(c4)
+	c5_ε = c4_ε / c4
+	return c5, c5_ε
+end
+```
+"""
+)
+
+# ╔═╡ b89e6d57-050d-4373-8c48-afcf5c1e6abe
+question_box(
+md"""
+How do we know the meaning of names? What does `^`, `sin`, `exp`, `+`, `log` refer to?
+"""
+)
+
+# ╔═╡ 1762c7cc-4a7d-43af-86d5-fb94e9afa4c2
+md"""
+In a dynamic language like Julia the semantics of these symbols are not gurantueed from the syntax! 
+
+It would be more correct to translate `log(c4)` into `δ_log(c4, c4_ϵ)`, Which we could then implement as `c4_ε / c4`.
+
+!!! note
+    As we can see `δ_g` is expressed in terms of `x` and it's derivative `x_ϵ`.
+    Instead of expressing these as two separate arguments we can bundle them in
+    a new number type.
 """
 
 # ╔═╡ b4ff8899-4ac2-4c48-b2b3-3a25d8a64d70
 md"""
 ### AD: Operator-overloading
+
+Instead of performing code synthesis on the syntax level, we can define a new number type `Dual`, and use it to provide overloads for all the operators.
+"""
+
+# ╔═╡ 1be367e1-0b24-4566-829d-b1769fe0c9e8
+md"""
+```julia
+
+struct Dual{T}
+	value::T
+    deriv::T
+end
+Dual(x::Real, y::Real) = Dual(promote(x, y)...)
+δ(f, x) = f(Dual(x, one(x)))
+
+Base.:+(x::Dual, y::Dual) = Dual(x.value + y.value,
+								 x.deriv + y.deriv)
+Base.log(x::Dual) = Dual(log(x.value), x.deriv / x.value)
+...
+```
+"""
+
+# ╔═╡ 94ac531b-7403-47a4-b657-895747401876
+md"""
+In Julia one of the most of operator-overloading is ForwardDiff.jl
 """
 
 # ╔═╡ 8e9fc1cb-44de-4280-bcc6-f03be7a47a29
 import ForwardDiff
 
+# ╔═╡ 7070c213-922c-4858-820f-40e8b80c3cbc
+δ(f, x) = ForwardDiff.derivative(f, x)
+
 # ╔═╡ c6f19816-6e5c-4a4d-9cb3-891055c9fae7
 md"""
-#### Limitations of operator overload approaches
+## Limitations of operator overload approaches
 """
 
 # ╔═╡ 526cbd5e-0eca-4c8b-8ae7-ecdc00395abe
@@ -255,7 +433,7 @@ md"""
 f(x::Float64) = x^2
 
 # ╔═╡ a865bc58-8817-48a6-a52b-515646f6cee0
-ForwardDiff.derivative(f, 2.0)
+δ(f, 2.0)
 
 # ╔═╡ e568f24a-3694-4cb5-8958-db00643b7fcf
 md"""
@@ -263,7 +441,7 @@ md"""
 """
 
 # ╔═╡ 3b858db5-3b5f-465e-9901-2570a8213419
-function g(x)
+function h(x)
 	A = zeros(2, 2)
 	A[1,1] = x
 	A[2,2] = x
@@ -271,12 +449,37 @@ function g(x)
 end
 
 # ╔═╡ ec6157b9-0d3b-4e96-a098-e65044716db8
-ForwardDiff.derivative(g, 2.0)
+δ(h, 2.0)
 
 # ╔═╡ a280de28-b0e5-4770-a751-78353a692354
 md"""
-### Compiler-Enabled
+## Compiler-Enabled AD
+
+Compilers like the Julia compilers don't act on the surface syntax, but rather they have multiple intermediate representations (IRs).
+
+- Untyped IR
+- Typed IR
+- LLVM IR
 """
+
+# ╔═╡ aa1d34de-244c-4254-8b82-7fa30767f969
+with_terminal() do
+	@code_llvm debuginfo=:none g(2.0)
+end
+
+# ╔═╡ bf7dc379-2d87-4df2-a8ae-05299d604617
+md"""
+Enzyme acts on the LLVM IR (with ample support through language-specific frontends) since the LLVM IR is fully specified it partially side-steps the "semantic" meaning question of the surface syntax.
+"""
+
+# ╔═╡ 349eaea0-8ff0-4945-a0f7-ba9bd9dc23e8
+with_terminal() do
+	Enzyme.Compiler.enzyme_code_llvm(
+		g, Duplicated, Tuple{Duplicated{Float64}},
+		mode=Enzyme.API.DEM_ForwardMode,
+		debuginfo=:none
+	)
+end
 
 # ╔═╡ a2aac3a8-54ac-449a-8bc7-c6375263a102
 Enzyme.autodiff(Forward, x->taylor(x, 8), Duplicated(0.5, 1.0)) |> only
@@ -284,25 +487,33 @@ Enzyme.autodiff(Forward, x->taylor(x, 8), Duplicated(0.5, 1.0)) |> only
 # ╔═╡ c1766483-9d4e-4ac9-9cf4-eb8a680fac71
 Enzyme.autodiff(Enzyme.Reverse, x->taylor(x, 8), Active(0.5)) |> first |> only
 
+# ╔═╡ 4d69e335-d027-4ddc-9d7c-2be3ce79e0c5
+md"""
+!!! note
+    You may have notice the term **Forward** in ForwardDiff and Enzyme autodiff(Forward), and now the term **Reverse**. More about this later, but forward and reverse are different mode of AD, and Reverse mode is preferred in ML and Forward is often used in scientific programming.
+"""
+
 # ╔═╡ 94d246de-d120-4d66-879f-f28076489dea
 Enzyme.gradient(Forward, f, 2.0) # Type-annotation
 
 # ╔═╡ 6dad4e2a-8521-4169-bfbd-a62991d53b5a
-Enzyme.gradient(Forward, g, 2.0) # Mixing of types 
+Enzyme.gradient(Forward, h, 2.0) # Mixing of types 
 
 # ╔═╡ bbccea64-cc3b-45eb-a816-ef2f4ac09a5e
-#### Comparison
+md"""
+## Comparison
 | Tool | Result |
 | ---- | ------ |
 | Symbolics.jl (substitute) |  $(substitute(d_ex, v_x=>0.5)) |
 | Symbolics.jl (build_function) |  $(d_taylor(0.5)) |
+| ForwardDiff.jl |  $(δ(x->taylor(x, 8), 0.5)) |
 | Enzyme.jl | $(only(Enzyme.autodiff(Forward, x->taylor(x, 8), Duplicated(0.5, 1.0)))) |
 | Finite differences first order | $(finite_differences(x->taylor(x, 8), 0.5)) |
 """
 
 # ╔═╡ 3b3d3bd4-2242-4941-9331-be465b80b778
 md"""
-### Benchmarks with other Julia AD tools 
+## Benchmarks with other Julia AD tools 
 
 And here we see a comparison against other AD tools within Julia.
 
@@ -312,40 +523,40 @@ $(LocalResource("./comparison.png"))
 # ╔═╡ 3fcc4381-dd86-4989-9adf-581fcd8b4eae
 md"""
 ## Datalayout: Dual-Numbers vs Shadow-Heap
+
+While Enzyme.jl and ForwardDiff.jl both implement forward-mode they differ in the memory layout. 
+
+For arrays, ForwardDiff.jl uses arrays of dual numbers and Enzyme.jl uses duals (shadows) of arrays. 
+
+```julia
+function h(x)
+	A = zeros(2, 2)
+	A[1,1] = x
+	A[2,2] = x
+	det(A)
+end
+```
 """
 
-# ╔═╡ da9f01a7-d02e-4191-b209-d9bf17337f5c
-md"""
-## Seeds / Directional derivatives
-"""
-
-# ╔═╡ 32c19626-6d30-48a2-9d71-bc15ce69512f
-# Also called Jacobian Vector Product
-function finite_differences_directional(F, u, v, ϵ = sqrt(eps()))
-	(F(u .+ v .* ϵ) .- F(u)) ./ ϵ
+# ╔═╡ a1714691-abc4-453e-b187-186ac91bfdd8
+function h2(x)
+	A = zeros(typeof(x), 2, 2)
+	@show typeof(A)
+	A[1,1] = x
+	A[2,2] = x
+	det(A)
 end
 
-# ╔═╡ 4e8982fd-e2b5-484c-be89-b94be5225ab7
-finite_differences_directional(F, [1.0, 1.0], [1.0, 0.0])
+# ╔═╡ dc75174d-bee2-492c-bb69-0b7825030258
+δ(h2, 2.0)
 
-# ╔═╡ e33abaac-3843-4dfd-a719-d9feed5ce547
-finite_differences_directional(F, [1.0, 1.0], [0.0, 1.0])
+# ╔═╡ b1bed2cc-3112-4dad-92bd-61e665df141b
+Enzyme.gradient(Forward, h2, 2.0)
 
-# ╔═╡ 263eebec-c1e7-4b77-ad69-da591b411739
-md"""
-#### Enzyme.jl
-"""
-
-# ╔═╡ a14c8125-29c9-4fe7-924a-589bc1f8fed1
-Enzyme.autodiff(Forward, F, Duplicated([1.0, 1.0], [0.0, 1.0])) |> only
-
-# ╔═╡ c1559ac5-1d14-45ba-8edd-3c21bc45725b
-Enzyme.autodiff(Forward, F, Duplicated([1.0, 1.0], [1.0, 0.0])) |> only
-
-# ╔═╡ 1a69ce14-3fdf-47f5-b10b-0fc9c8d819eb
+# ╔═╡ cc14f4d0-3392-4350-85e3-65902bb5f224
 md"""
 !!! note
-    `Enzyme.autodiff(Forward, ...)` is a generic interface to calculate jacobian-vector-products. 
+    Enzyme forms **shadows** of memory allocations.
 """
 
 # ╔═╡ c3392c39-5d2b-4141-85b6-da0b59e23eeb
@@ -368,12 +579,13 @@ J = \begin{bmatrix}
 \end{bmatrix}
 ```
 
-We can think of seeds as a vector $v$ that selects a column to extract from the Jacobian, by performing $Jv$ a Jacobian vector product. So using `autodiff` we can extract the Jacobian of a program.
+!!! note
+    In scientific programming with often the jacobian (or a higher order variant thereof). We can think of **forward**-mode as performing a jacobian-vector-product. Equivalently **reverse**-mode is the same as performing a jacobian-transpose-vector-product.
 """
 
 # ╔═╡ e8da9ea0-d6ff-4669-9d1f-78a1ac12385b
 md"""
-#### Symbolic
+## Symbolic (Jacobian)
 """
 
 # ╔═╡ 640b75b0-5050-4540-a470-3d0855aa96ac
@@ -385,16 +597,350 @@ end
 
 # ╔═╡ f346a136-670d-4264-bfb0-d1f4bf0528e7
 md"""
-#### Enzyme.jl
+## Enzyme.jl (Jacobian)
 """
 
 # ╔═╡ 83c6e894-c423-4713-a434-e66606eeddf4
 Enzyme.jacobian(Forward, F, [1.0, 1.0]) |> only
 
+# ╔═╡ da9f01a7-d02e-4191-b209-d9bf17337f5c
+md"""
+## Seeds / Directional derivatives
+
+We can think of seeds as a vector $v$ that selects a column to extract from the Jacobian, by performing $Jv$ a Jacobian vector product. So using `autodiff` we can extract the Jacobian of a program.
+"""
+
+# ╔═╡ 1c3d05e3-a95e-4307-b21f-73355fc9cfaf
+md"""
+In many texts you will find the directional derivatives approximated using a finite-difference operation.
+
+
+$\frac{F(u + \epsilon \cdot v) - F(u)}{\epsilon}$
+"""
+
+# ╔═╡ 32c19626-6d30-48a2-9d71-bc15ce69512f
+function finite_differences_directional(F, u, v, ϵ = sqrt(eps()))
+	(F(u .+ v .* ϵ) .- F(u)) ./ ϵ
+end
+
+# ╔═╡ 4e8982fd-e2b5-484c-be89-b94be5225ab7
+finite_differences_directional(F, [1.0, 1.0], [1.0, 0.0])
+
+# ╔═╡ e33abaac-3843-4dfd-a719-d9feed5ce547
+finite_differences_directional(F, [1.0, 1.0], [0.0, 1.0])
+
+# ╔═╡ 119dc126-b00e-4379-9214-82c8311cfd77
+md"""
+## Using Enzyme (generalized)
+
+$w = J*v$
+
+```
+autodiff(Forward, G!, Duplicated(out, w), Duplicated(in, v))
+```
+
+$w = v*J$
+
+
+```
+autodiff(Reverse, G!, Duplicated(out, copy(v)), Duplicated(in, w))
+```
+
+!!! note
+    Enzyme zeros the shadow-inputs. 
+    Necessitating the `copy(v)`
+"""
+
+# ╔═╡ 30bcef0b-abcb-46d4-84e2-820e40d3aa6c
+md"""
+## Reverse vs Forward mode
+"""
+
+# ╔═╡ 9e8ff58b-9f5b-4d44-9f5c-8da56ce07408
+J = Enzyme.jacobian(Forward, G, [1.0, 1.0]) |> only
+
+# ╔═╡ b59663af-5e25-4cd6-956c-c480801efb4b
+begin
+	x1 = rand(2)
+	x2 = rand(3)
+end
+
+# ╔═╡ ebd3712f-d1ea-47a4-8cb9-e054760cc1a6
+J*x1
+
+# ╔═╡ 771856d1-8166-4a81-a55b-500367c115a6
+let
+	res = [0.0, 0.0, 0.0]
+	dres = zero(res)
+	autodiff(Forward, G!, Duplicated(res, dres), Duplicated([1.0, 1.0], x1))
+	dres
+end
+
+# ╔═╡ 3b3b143a-c8a7-4ebb-869c-18b1dce3df76
+transpose(J)*x2
+
+# ╔═╡ d31661c3-a16e-4b2d-b45d-98368e8fd8d6
+let
+	res = [0.0, 0.0, 0.0]
+	dx = zeros(2)
+	autodiff(Enzyme.Reverse, G!, Duplicated(res, x2), Duplicated([1.0, 1.0], dx))
+	dx
+end
+
+# ╔═╡ e3e0f0b7-478c-41c5-923c-f00c39b0f16f
+md"""
+## Flavors of AD
+- ``\color{purple}{\textbf{Forward-Mode}}``: Perform the shadow computation alongside and in the same order as the instructions in the original program. Propagate the derivative from the inputs to the outputs. Lets you compute the derivative of all outputs with respect to a single input.
+
+- ``\color{blue}{\textbf{Reverse-Mode}}``: Perform the shadow computation in the opposite order as the instructions in the original program. Propagate the derivative from the outputs to the inputs. Lets you compute the derivative of a single output with respect to all inputs.
+
+    - More common in machine learning as it lets you take the gradient with respect to all input weights/biases in a single sweep.
+
+
+$(LocalResource("./fwd_backward.png"))
+
+"""
+
 # ╔═╡ b406e424-a761-4df8-8f6a-d517f0de9fdb
 md"""
-#### Matrix-free methods
-""" |> autodiff
+## Matrix-free methods
+"""
+
+# ╔═╡ 9cbce389-05a2-4848-b452-0d8c89583c43
+function maybe_duplicated(f, df)
+    if !Enzyme.Compiler.guaranteed_const(typeof(f))
+        return Duplicated(f, df)
+    else
+        return Const(f)
+    end
+end
+
+# ╔═╡ 03cfe8d0-2556-4488-8220-b2b30a967141
+begin
+	struct JacobianOperator{F, A}
+	    f::F # res = F(u)
+	    u::A
+		res::A
+	end
+	JacobianOperator(F, u) = JacobianOperator(F, u, F(u))
+end
+
+# ╔═╡ fda2e02f-3efb-45bd-b81c-02af941623cf
+begin
+	Base.size(J::JacobianOperator) = (length(J.res), length(J.u))
+	Base.eltype(J::JacobianOperator) = eltype(J.u)
+end
+
+# ╔═╡ f955fca1-f8ca-434a-9b74-a7a7053858a9
+function LinearAlgebra.mul!(out, J::JacobianOperator, v)
+    f_cache = Enzyme.make_zero(J.f)
+    dres = autodiff(
+        Forward,
+        maybe_duplicated(J.f, f_cache), Duplicated,
+        Duplicated(J.u, reshape(v, size(J.u)))
+    ) |> only
+	out .= dres
+    return nothing
+end
+
+# ╔═╡ f33cc185-1249-4c37-8a5c-324734376857
+function Base.collect(JOp::JacobianOperator)
+    N, M = size(JOp)
+    v = zeros(eltype(JOp), M)
+    out = zeros(eltype(JOp), N)
+    J = SparseMatrixCSC{eltype(v), Int}(undef, size(JOp)...)
+    for j in 1:M
+        out .= 0.0
+        v .= 0.0
+        v[j] = 1.0
+        mul!(out, JOp, v)
+        for i in 1:N
+            if out[i] != 0
+                J[i, j] = out[i]
+            end
+        end
+    end
+    return J
+end
+
+# ╔═╡ 0157fb81-15f4-46ec-9a2c-7be29dde43e8
+function plot_gradientfield(N, S, x₀, y, θ₁, θ₂, n)
+    θ_space = collect(Iterators.product(θ₁, θ₂))
+    gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
+
+    fig, ax, hm = heatmap(
+        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-3, 10^3)
+    )
+    Colorbar(fig[:, end + 1], hm)
+
+    streamplot!(
+        ax, (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
+        alpha = 0.5,
+        colorscale = log10, color = p -> :red,
+        arrow_size = 10
+    )
+    return fig
+end
+
+# ╔═╡ 92ec7201-88f2-404c-a948-717433c319e6
+let
+	x₀ = -0.3
+    y = 2.0
+    n = 4
+
+    θ₁ = -4:0.01:4
+    θ₂ = -4:0.01:4
+    θ_space = collect(Iterators.product(θ₁, θ₂))
+
+	L_space = simulate.(N, S, x₀, y, θ_space, n);
+
+	fig = Figure(size = (1000, 400))
+	ax = Axis(fig[1,1], title="Loss landscape", xlabel="θ₁", ylabel="θ₂")
+	
+    hm = heatmap!(ax,
+        θ₁, θ₂, L_space,
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-5, 10^5)
+    )
+    Colorbar(fig[1, 2], hm)
+
+	gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
+	ax2 = Axis(fig[1, 3], title="Gradient landscape", xlabel="δθ₁", ylabel="δθ₂")
+
+	hm = heatmap!(ax2,
+        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-3, 10^3)
+    )
+    Colorbar(fig[1, 4], hm)
+
+	streamplot!(ax2,
+        (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
+        alpha = 0.5,
+        colorscale = log10, color = p -> :red,
+        arrow_size = 10
+    )
+    fig
+end
+
+# ╔═╡ dfc03456-f2db-4b1b-b38a-0523881a8398
+JOp = JacobianOperator(F, [1.0, 1.0])
+
+# ╔═╡ be6e034f-4246-4c50-a71d-448b78b9ad2a
+collect(JOp)
+
+# ╔═╡ b582d82b-945c-4c7e-81f7-52fd1b616480
+let
+	u = zeros(3)
+	mul!(u, JOp, x1)
+	u
+end
+
+# ╔═╡ c2e3e9af-9434-4fbe-a35f-bde32564103d
+J*x1
+
+# ╔═╡ 5f5265fe-9790-48fa-8947-876ec161e20b
+md"""
+## Newton-Krylov
+
+$F(u) = 0$
+$J(F, u) * x = -F(u)$
+
+Problems of the form $F(u) = 0$ can be solved with a Newton method, this particular helpful for finding an iterative solution of nonlinear equations.
+
+We can use a Krylov solver "gmres" to solve the linear system $Ax = -b$ without "materializing" $A$. This is called a matrix-free method.
+"""
+
+# ╔═╡ 7242500d-d754-4c09-99a4-83f94142e654
+function G2(x)
+    [
+		x[1]^2 + x[2]^2 - 2,
+		exp(x[1] - 1) + x[2]^2 - 2
+	]
+end
+
+# ╔═╡ ab48a94b-f252-4023-b134-548c0870b393
+let
+	xs = LinRange(-3, 4, 1000)
+	ys = LinRange(-5, 5, 1000)
+	
+	levels = [0.1, 0.25, 0.5:2:10..., 10.0:10:200..., 200:100:4000...]
+	
+	fig, ax = contour(xs, ys, (x, y) -> norm(G2([x, y])); levels)
+	fig
+end
+
+# ╔═╡ c2f8cd38-b602-4848-b662-cc5c26a989b4
+function newton_krylov!(F, u;
+						tol_rel = 1.0e-6,
+        				tol_abs = 1.0e-12,
+						max_niter = 50,
+						callback = x->nothing)
+	
+	res = F(u)
+	n_res = norm(res)
+	callback(u)
+
+	tol = tol_rel * n_res + tol_abs
+	iter = 0
+	
+	while n_res > tol && iter <= max_niter
+		# Ax = -b
+		J = JacobianOperator(F, u, res)
+		x, stats = gmres(J, -res)
+
+		# Take a step in the newton direction
+		u .+= x
+
+		res = F(u)
+		n_res = norm(res)
+		callback(u)
+		if isinf(n_res) || isnan(n_res)
+			error("Solver blew up")
+		end
+		iter += 1
+	end
+	return u, (; solved = n_res <= tol, iter)
+end
+
+# ╔═╡ da61268e-1be4-44b1-87f1-ba349db93150
+trace_1 = let x₀ = [2.0, 0.5]
+    xs = Vector{Tuple{Float64, Float64}}(undef, 0)
+    hist(x) = (push!(xs, (x[1], x[2])); nothing)
+    _ = newton_krylov!(G2, x₀, callback = hist)
+	xs
+end
+
+# ╔═╡ fdebd8ba-beac-4025-97a2-af232c8d6471
+trace_2 = let x₀ = [2.5, 3.0]
+    xs = Vector{Tuple{Float64, Float64}}(undef, 0)
+    hist(x) = (push!(xs, (x[1], x[2])); nothing)
+    newton_krylov!(G2, x₀, callback = hist)
+    xs
+end
+
+# ╔═╡ eb5d6110-38d6-46ec-b59d-8615afc3f6f7
+let
+	xs = LinRange(-3, 4, 1000)
+	ys = LinRange(-5, 5, 1000)
+	
+	levels = [0.1, 0.25, 0.5:2:10..., 10.0:10:200..., 200:100:4000...]
+	
+	fig, ax = contour(xs, ys, (x, y) -> norm(G2([x, y])); levels)
+	lines!(ax, trace_1)
+	lines!(ax, trace_2)
+	fig
+end
+
+# ╔═╡ cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
+md"""
+# AD Curiosities
+"""
 
 # ╔═╡ 23c423cd-5227-4eec-a1f1-9fb6e209678a
 md"""
@@ -437,22 +983,31 @@ let dx = zeros(3)
 	dx
 end
 
-# ╔═╡ e3e0f0b7-478c-41c5-923c-f00c39b0f16f
-md"""
-## Flavors of AD
-- ``\color{purple}{\textbf{Forward-Mode}}``: Perform the shadow computation alongside and in the same order as the instructions in the original program. Propagate the derivative from the inputs to the outputs. Lets you compute the derivative of all outputs with respect to a single input.
+# ╔═╡ ed20ead3-9f8f-4b15-8e58-a25417cd72a2
+abs_right(x) = x < 0 ? -x : x
 
-- ``\color{blue}{\textbf{Reverse-Mode}}``: Perform the shadow computation in the opposite order as the instructions in the original program. Propagate the derivative from the outputs to the inputs. Lets you compute the derivative of a single output with respect to all inputs.
+# ╔═╡ d438d77a-0828-48c9-865c-0ecb4bc85531
+abs_left(x) = x <= 0 ? -x : x
 
-    - More common in machine learning as it lets you take the gradient with respect to all input weights/biases in a single sweep.
+# ╔═╡ 8776d9df-73d0-498a-be5b-c937a33a3c85
+function abs_center(x) 
+    if x == 0
+		return zero(x)
+	elseif x < 0
+		return -x
+	else
+		return x
+	end
+end
 
+# ╔═╡ 34de48ea-2fff-4045-b786-311bab322916
+autodiff(Forward, abs_right, Duplicated(0.0,1.0))
 
-$(LocalResource("./fwd_backward.png"))
+# ╔═╡ 36464a69-184f-47ea-bc02-71dd5642423e
+autodiff(Forward, abs_left, Duplicated(0.0,1.0))
 
-"""
-
-# ╔═╡ 610e135f-075d-4da6-a891-79e484d5b49d
-
+# ╔═╡ 7818921f-a2f3-46d5-9341-6ee6884692ad
+autodiff(Forward, abs_center, Duplicated(0.0,1.0))
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -460,18 +1015,21 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
-CairoMakie = "~0.13.4"
+CairoMakie = "~0.15.6"
 Enzyme = "~0.13.69"
 ForwardDiff = "~1.0.1"
+Krylov = "~0.10.1"
 PlutoTeachingTools = "~0.4.5"
 PlutoUI = "~0.7.71"
-Symbolics = "~6.39.0"
+Symbolics = "~6.39.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -480,12 +1038,12 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "895328de39b85ff4cf3e01acd32bcb5d9fb71b43"
+project_hash = "e1747ea0d5ef7b21ea7d0ef24df512aea2b7d9bf"
 
 [[deps.ADTypes]]
-git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
+git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.15.0"
+version = "1.17.0"
 weakdeps = ["ChainRulesCore", "ConstructionBase", "EnzymeCore"]
 
     [deps.ADTypes.extensions]
@@ -629,6 +1187,11 @@ version = "0.4.7"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 version = "1.11.0"
 
+[[deps.BaseDirs]]
+git-tree-sha1 = "bca794632b8a9bbe159d56bf9e31c422671b35e0"
+uuid = "18cc8868-cbac-4acf-b575-c8ff214dc66f"
+version = "1.3.2"
+
 [[deps.Bijections]]
 git-tree-sha1 = "6aaafea90a56dc1fc8cbc15e3cf26d6bc81eb0a3"
 uuid = "e2ed5e7c-b2de-5872-ae92-c73ca462fb04"
@@ -669,9 +1232,9 @@ version = "1.1.1"
 
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "c1c90ea6bba91f769a8fc3ccda802e96620eb24c"
+git-tree-sha1 = "f8caabc5a1c1fb88bcbf9bc4078e5656a477afd0"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.13.4"
+version = "0.15.6"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -681,9 +1244,9 @@ version = "1.18.5+0"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra"]
-git-tree-sha1 = "1713c74e00545bfe14605d2a2be1712de8fbcb58"
+git-tree-sha1 = "e4c6a16e77171a5f5e25e9646617ab1c276c5607"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.25.1"
+version = "1.26.0"
 weakdeps = ["SparseArrays"]
 
     [deps.ChainRulesCore.extensions]
@@ -697,9 +1260,9 @@ version = "0.4.1"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "403f2d8e209681fcbd9468a8514efff3ea08452e"
+git-tree-sha1 = "a656525c8b46aa6a1c76891552ed5381bb32ae7b"
 uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.29.0"
+version = "3.30.0"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -777,6 +1340,12 @@ weakdeps = ["InverseFunctions"]
     [deps.CompositionsBase.extensions]
     CompositionsBaseInverseFunctionsExt = "InverseFunctions"
 
+[[deps.ComputePipeline]]
+deps = ["Observables", "Preferences"]
+git-tree-sha1 = "cb1299fee09da21e65ec88c1ff3a259f8d0b5802"
+uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
+version = "0.1.4"
+
 [[deps.ConstructionBase]]
 git-tree-sha1 = "b4b092499347b18a015186eae3042f72267106cb"
 uuid = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
@@ -792,11 +1361,6 @@ weakdeps = ["IntervalSets", "LinearAlgebra", "StaticArrays"]
 git-tree-sha1 = "439e35b0b36e2e5881738abc8857bd92ad6ff9a8"
 uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
 version = "0.6.3"
-
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
 
 [[deps.DataAPI]]
 git-tree-sha1 = "abe83f3a2f1b857aac70ef8b269080af17764bbe"
@@ -844,9 +1408,9 @@ version = "1.11.0"
 
 [[deps.Distributions]]
 deps = ["AliasTables", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsAPI", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "6d8b535fd38293bc54b88455465a1386f8ac1c3c"
+git-tree-sha1 = "3e6d038b77f22791b8e3472b7c633acea1ecac06"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.119"
+version = "0.25.120"
 
     [deps.Distributions.extensions]
     DistributionsChainRulesCoreExt = "ChainRulesCore"
@@ -864,14 +1428,15 @@ uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.9.5"
 
 [[deps.DomainSets]]
-deps = ["CompositeTypes", "IntervalSets", "LinearAlgebra", "Random", "StaticArrays"]
-git-tree-sha1 = "a7e9f13f33652c533d49868a534bfb2050d1365f"
+deps = ["CompositeTypes", "IntervalSets", "LinearAlgebra", "StaticArrays"]
+git-tree-sha1 = "c249d86e97a7e8398ce2068dce4c078a1c3464de"
 uuid = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
-version = "0.7.15"
-weakdeps = ["Makie"]
+version = "0.7.16"
+weakdeps = ["Makie", "Random"]
 
     [deps.DomainSets.extensions]
     DomainSetsMakieExt = "Makie"
+    DomainSetsRandomExt = "Random"
 
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
@@ -955,15 +1520,15 @@ uuid = "55351af7-c7e9-48d6-89ff-24e801d99491"
 version = "0.10.14"
 
 [[deps.Extents]]
-git-tree-sha1 = "063512a13dbe9c40d999c439268539aa552d1ae6"
+git-tree-sha1 = "b309b36a9e02fe7be71270dd8c0fd873625332b4"
 uuid = "411431e0-e8b7-467b-b5e0-f676ba4f2910"
-version = "0.1.5"
+version = "0.1.6"
 
 [[deps.FFMPEG_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "PCRE2_jll", "Zlib_jll", "libaom_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
-git-tree-sha1 = "8cc47f299902e13f90405ddb5bf87e5d474c0d38"
+git-tree-sha1 = "eaa040768ea663ca695d442be1bc97edfe6824f2"
 uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
-version = "6.1.2+0"
+version = "6.1.3+0"
 
 [[deps.FFTW]]
 deps = ["AbstractFFTs", "FFTW_jll", "LinearAlgebra", "MKL_jll", "Preferences", "Reexport"]
@@ -1062,10 +1627,10 @@ uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
 version = "2.13.4+0"
 
 [[deps.FreeTypeAbstraction]]
-deps = ["ColorVectorSpace", "Colors", "FreeType", "GeometryBasics"]
-git-tree-sha1 = "d52e255138ac21be31fa633200b65e4e71d26802"
+deps = ["BaseDirs", "ColorVectorSpace", "Colors", "FreeType", "GeometryBasics", "Mmap"]
+git-tree-sha1 = "4ebb930ef4a43817991ba35db6317a05e59abd11"
 uuid = "663a7486-cb36-511b-a19d-713bb74d65c9"
-version = "0.10.6"
+version = "0.10.8"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1101,22 +1666,17 @@ git-tree-sha1 = "eb1e212e12cc058fa16712082d44be499d23638c"
 uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
 version = "1.6.1"
 
-[[deps.GeoFormatTypes]]
-git-tree-sha1 = "8e233d5167e63d708d41f87597433f59a0f213fe"
-uuid = "68eda718-8dee-11e9-39e7-89f7f65f511f"
-version = "0.4.4"
-
-[[deps.GeoInterface]]
-deps = ["DataAPI", "Extents", "GeoFormatTypes"]
-git-tree-sha1 = "294e99f19869d0b0cb71aef92f19d03649d028d5"
-uuid = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
-version = "1.4.1"
-
 [[deps.GeometryBasics]]
-deps = ["EarCut_jll", "Extents", "GeoInterface", "IterTools", "LinearAlgebra", "PrecompileTools", "Random", "StaticArrays"]
-git-tree-sha1 = "2670cf32dcf0229c9893b895a9afe725edb23545"
+deps = ["EarCut_jll", "Extents", "IterTools", "LinearAlgebra", "PrecompileTools", "Random", "StaticArrays"]
+git-tree-sha1 = "1f5a80f4ed9f5a4aada88fc2db456e637676414b"
 uuid = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
-version = "0.5.9"
+version = "0.5.10"
+
+    [deps.GeometryBasics.extensions]
+    GeometryBasicsGeoInterfaceExt = "GeoInterface"
+
+    [deps.GeometryBasics.weakdeps]
+    GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 
 [[deps.GettextRuntime_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll"]
@@ -1236,15 +1796,15 @@ uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
 version = "0.1.5"
 
 [[deps.IntegerMathUtils]]
-git-tree-sha1 = "b8ffb903da9f7b8cf695a8bead8e01814aa24b30"
+git-tree-sha1 = "4c1acff2dc6b6967e7e750633c50bc3b8d83e617"
 uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
-version = "0.1.2"
+version = "0.1.3"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl"]
-git-tree-sha1 = "0f14a5456bdc6b9731a5682f439a672750a09e48"
+git-tree-sha1 = "ec1debd61c300961f98064cfb21287613ad7f303"
 uuid = "1d5cc7b8-4909-519e-a0f8-d0f5ad9712d0"
-version = "2025.0.4+0"
+version = "2025.2.0+0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
@@ -1253,28 +1813,38 @@ version = "1.11.0"
 
 [[deps.Interpolations]]
 deps = ["Adapt", "AxisAlgorithms", "ChainRulesCore", "LinearAlgebra", "OffsetArrays", "Random", "Ratios", "Requires", "SharedArrays", "SparseArrays", "StaticArrays", "WoodburyMatrices"]
-git-tree-sha1 = "88a101217d7cb38a7b481ccd50d21876e1d1b0e0"
+git-tree-sha1 = "f2905febca224eade352a573e129ef43aa593354"
 uuid = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
-version = "0.15.1"
-weakdeps = ["Unitful"]
+version = "0.16.1"
+weakdeps = ["ForwardDiff", "Unitful"]
 
     [deps.Interpolations.extensions]
+    InterpolationsForwardDiffExt = "ForwardDiff"
     InterpolationsUnitfulExt = "Unitful"
 
 [[deps.IntervalArithmetic]]
 deps = ["CRlibm", "MacroTools", "OpenBLASConsistentFPCSR_jll", "Random", "RoundingEmulator"]
-git-tree-sha1 = "4e1b4155f04ffa0acf3a0d6e3d651892604666f5"
+git-tree-sha1 = "79342df41c3c24664e5bf29395cfdf2f2a599412"
 uuid = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
-version = "0.22.34"
-weakdeps = ["DiffRules", "ForwardDiff", "IntervalSets", "LinearAlgebra", "RecipesBase", "SparseArrays"]
+version = "0.22.36"
 
     [deps.IntervalArithmetic.extensions]
+    IntervalArithmeticArblibExt = "Arblib"
     IntervalArithmeticDiffRulesExt = "DiffRules"
     IntervalArithmeticForwardDiffExt = "ForwardDiff"
     IntervalArithmeticIntervalSetsExt = "IntervalSets"
     IntervalArithmeticLinearAlgebraExt = "LinearAlgebra"
     IntervalArithmeticRecipesBaseExt = "RecipesBase"
     IntervalArithmeticSparseArraysExt = "SparseArrays"
+
+    [deps.IntervalArithmetic.weakdeps]
+    Arblib = "fb37089c-8514-4489-9461-98f9c8763369"
+    DiffRules = "b552c78f-8df3-52c6-915a-8e097449b14b"
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+    IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
+    LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+    RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.IntervalSets]]
 git-tree-sha1 = "5fbb102dcb8b1a858111ae81d56682376130517d"
@@ -1350,15 +1920,21 @@ version = "3.1.2+0"
 
 [[deps.KernelDensity]]
 deps = ["Distributions", "DocStringExtensions", "FFTW", "Interpolations", "StatsBase"]
-git-tree-sha1 = "7d703202e65efa1369de1279c162b915e245eed1"
+git-tree-sha1 = "ba51324b894edaf1df3ab16e2cc6bc3280a2f1a7"
 uuid = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
-version = "0.6.9"
+version = "0.6.10"
+
+[[deps.Krylov]]
+deps = ["LinearAlgebra", "Printf", "SparseArrays"]
+git-tree-sha1 = "b94257a1a8737099ca40bc7271a8b374033473ed"
+uuid = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
+version = "0.10.1"
 
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "170b660facf5df5de098d866564877e119141cbd"
+git-tree-sha1 = "059aabebaa7c82ccb853dd4a0ee9d17796f7e1bc"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
-version = "3.100.2+0"
+version = "3.100.3+0"
 
 [[deps.LERC_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -1532,9 +2108,9 @@ version = "1.1.0"
 
 [[deps.MKL_jll]]
 deps = ["Artifacts", "IntelOpenMP_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "oneTBB_jll"]
-git-tree-sha1 = "5de60bc6cb3899cd318d80d627560fae2e2d99ae"
+git-tree-sha1 = "282cadc186e7b2ae0eeadbd7a4dffed4196ae2aa"
 uuid = "856f044c-d86e-5d09-b602-aeab76dc8ba7"
-version = "2025.0.1+1"
+version = "2025.2.0+0"
 
 [[deps.MacroTools]]
 git-tree-sha1 = "1e0228a030642014fe5cfe68c2c0a818f9e3f522"
@@ -1542,16 +2118,10 @@ uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.5.16"
 
 [[deps.Makie]]
-deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "InverseFunctions", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "MakieCore", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "PNGFiles", "Packing", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
-git-tree-sha1 = "0318d174aa9ec593ddf6dc340b434657a8f1e068"
+deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "ComputePipeline", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "InverseFunctions", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "PNGFiles", "Packing", "Pkg", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
+git-tree-sha1 = "368542cde25d381e44d84c3c4209764f05f4ef19"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.22.4"
-
-[[deps.MakieCore]]
-deps = ["ColorTypes", "GeometryBasics", "IntervalSets", "Observables"]
-git-tree-sha1 = "903ef1d9d326ebc4a9e6cf24f22194d8da022b50"
-uuid = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
-version = "0.9.2"
+version = "0.24.6"
 
 [[deps.MappedArrays]]
 git-tree-sha1 = "2dab0221fe2b0f2cb6754eaa743cc266339f527e"
@@ -1565,9 +2135,9 @@ version = "1.11.0"
 
 [[deps.MathTeXEngine]]
 deps = ["AbstractTrees", "Automa", "DataStructures", "FreeTypeAbstraction", "GeometryBasics", "LaTeXStrings", "REPL", "RelocatableFolders", "UnicodeFun"]
-git-tree-sha1 = "f5a6805fb46c0285991009b526ec6fae43c6dec2"
+git-tree-sha1 = "a370fef694c109e1950836176ed0d5eabbb65479"
 uuid = "0a4f8689-d25c-4efe-a92b-7142dfc1aa53"
-version = "0.6.3"
+version = "0.6.6"
 
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1649,10 +2219,10 @@ weakdeps = ["Adapt"]
     OffsetArraysAdaptExt = "Adapt"
 
 [[deps.Ogg_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "b6aa4566bb7ae78498a5e68943863fa8b5231b59"
 uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
-version = "1.3.5+1"
+version = "1.3.6+0"
 
 [[deps.OpenBLASConsistentFPCSR_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl"]
@@ -1696,9 +2266,9 @@ version = "0.5.6+0"
 
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6703a85cb3781bd5909d48730a67205f3f31a575"
+git-tree-sha1 = "c392fc5dd032381919e3b22dd32d6443760ce7ea"
 uuid = "91d4177d-7536-5919-b921-800302f37372"
-version = "1.3.3+0"
+version = "1.5.2+0"
 
 [[deps.OrderedCollections]]
 git-tree-sha1 = "05868e21324cede2207c6f0f466b4bfef6d5e7ee"
@@ -1712,9 +2282,9 @@ version = "10.42.0+1"
 
 [[deps.PDMats]]
 deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
-git-tree-sha1 = "0e1340b5d98971513bddaa6bbed470670cebbbfe"
+git-tree-sha1 = "f07c06228a1c670ae4c87d1276b92c7c597fdda0"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
-version = "0.11.34"
+version = "0.11.35"
 
 [[deps.PNGFiles]]
 deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
@@ -1790,6 +2360,22 @@ git-tree-sha1 = "77b3d3605fc1cd0b42d95eba87dfcd2bf67d5ff6"
 uuid = "647866c9-e3ac-4575-94e7-e3d426903924"
 version = "0.1.2"
 
+[[deps.PreallocationTools]]
+deps = ["Adapt", "ArrayInterface", "PrecompileTools"]
+git-tree-sha1 = "520070df581845686c8c488b6dadce6b2c316856"
+uuid = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
+version = "0.4.32"
+
+    [deps.PreallocationTools.extensions]
+    PreallocationToolsForwardDiffExt = "ForwardDiff"
+    PreallocationToolsReverseDiffExt = "ReverseDiff"
+    PreallocationToolsSparseConnectivityTracerExt = "SparseConnectivityTracer"
+
+    [deps.PreallocationTools.weakdeps]
+    ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+    ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+    SparseConnectivityTracer = "9f842d2f-2579-4b1d-911e-f412cf18a3f5"
+
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
 git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
@@ -1801,12 +2387,6 @@ deps = ["TOML"]
 git-tree-sha1 = "0f27480397253da18fe2c12a4ba4eb9eb208bf3d"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
 version = "1.5.0"
-
-[[deps.PrettyTables]]
-deps = ["Crayons", "LaTeXStrings", "Markdown", "PrecompileTools", "Printf", "Reexport", "StringManipulation", "Tables"]
-git-tree-sha1 = "1101cd475833706e4d0e7b122218257178f48f34"
-uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
-version = "2.4.0"
 
 [[deps.Primes]]
 deps = ["IntegerMathUtils"]
@@ -1878,10 +2458,10 @@ uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 version = "1.3.4"
 
 [[deps.RecursiveArrayTools]]
-deps = ["Adapt", "ArrayInterface", "DocStringExtensions", "GPUArraysCore", "IteratorInterfaceExtensions", "LinearAlgebra", "RecipesBase", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface", "Tables"]
-git-tree-sha1 = "efc718978d97745c58e69c5115a35c51a080e45e"
+deps = ["Adapt", "ArrayInterface", "DocStringExtensions", "GPUArraysCore", "LinearAlgebra", "RecipesBase", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
+git-tree-sha1 = "96bef5b9ac123fff1b379acf0303cf914aaabdfd"
 uuid = "731186ca-8d62-57ce-b412-fbd966d074cd"
-version = "3.34.1"
+version = "3.37.1"
 
     [deps.RecursiveArrayTools.extensions]
     RecursiveArrayToolsFastBroadcastExt = "FastBroadcast"
@@ -1892,6 +2472,7 @@ version = "3.34.1"
     RecursiveArrayToolsReverseDiffExt = ["ReverseDiff", "Zygote"]
     RecursiveArrayToolsSparseArraysExt = ["SparseArrays"]
     RecursiveArrayToolsStructArraysExt = "StructArrays"
+    RecursiveArrayToolsTablesExt = ["Tables"]
     RecursiveArrayToolsTrackerExt = "Tracker"
     RecursiveArrayToolsZygoteExt = "Zygote"
 
@@ -1904,6 +2485,7 @@ version = "3.34.1"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
     StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
+    Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
     Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
@@ -1958,10 +2540,10 @@ uuid = "fdea26ae-647d-5447-a871-4b548cad5224"
 version = "3.7.1"
 
 [[deps.SciMLBase]]
-deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "31587e20cdea9fba3a689033313e658dfc9aae78"
+deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PreallocationTools", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
+git-tree-sha1 = "4398bda451c3c7aaca91a8077bcba227fe236d72"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.102.1"
+version = "2.111.1"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"
@@ -1986,9 +2568,9 @@ version = "2.102.1"
 
 [[deps.SciMLOperators]]
 deps = ["Accessors", "ArrayInterface", "DocStringExtensions", "LinearAlgebra", "MacroTools"]
-git-tree-sha1 = "3249fe77f322fe539e935ecb388c8290cd38a3fc"
+git-tree-sha1 = "aea915a39b547c48a18ee041120db1ae8df5a691"
 uuid = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
-version = "1.3.1"
+version = "1.5.0"
 weakdeps = ["SparseArrays", "StaticArraysCore"]
 
     [deps.SciMLOperators.extensions]
@@ -2042,15 +2624,15 @@ version = "0.4.0"
 
 [[deps.SimpleTraits]]
 deps = ["InteractiveUtils", "MacroTools"]
-git-tree-sha1 = "5d7e3f4e11935503d3ecaf7186eac40602e7d231"
+git-tree-sha1 = "be8eeac05ec97d379347584fa9fe2f5f76795bcb"
 uuid = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
-version = "0.9.4"
+version = "0.9.5"
 
 [[deps.Sixel]]
 deps = ["Dates", "FileIO", "ImageCore", "IndirectArrays", "OffsetArrays", "REPL", "libsixel_jll"]
-git-tree-sha1 = "2da10356e31327c7096832eb9cd86307a50b1eb6"
+git-tree-sha1 = "0494aed9501e7fb65daba895fb7fd57cc38bc743"
 uuid = "45858cf5-a6b0-47a3-bbea-62219f50df47"
-version = "0.1.3"
+version = "0.1.5"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
@@ -2058,9 +2640,9 @@ version = "1.11.0"
 
 [[deps.SortingAlgorithms]]
 deps = ["DataStructures"]
-git-tree-sha1 = "66e0a8e672a0bdfca2c3f5937efb8538b9ddc085"
+git-tree-sha1 = "64d974c2e6fdf07f8155b5b2ca2ffa9069b608d9"
 uuid = "a2af1166-a08f-5f64-846c-94a0d3cef48c"
-version = "1.2.1"
+version = "1.2.2"
 
 [[deps.SparseArrays]]
 deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
@@ -2123,9 +2705,9 @@ version = "1.7.1"
 
 [[deps.StatsBase]]
 deps = ["AliasTables", "DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "b81c5035922cc89c2d9523afc6c54be512411466"
+git-tree-sha1 = "2c962245732371acd51700dbb268af311bddd719"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.34.5"
+version = "0.34.6"
 
 [[deps.StatsFuns]]
 deps = ["HypergeometricFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
@@ -2137,12 +2719,6 @@ weakdeps = ["ChainRulesCore", "InverseFunctions"]
     [deps.StatsFuns.extensions]
     StatsFunsChainRulesCoreExt = "ChainRulesCore"
     StatsFunsInverseFunctionsExt = "InverseFunctions"
-
-[[deps.StringManipulation]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "725421ae8e530ec29bcbdddbe91ff8053421d023"
-uuid = "892a3eda-7b42-436c-8928-eab12a02cf0e"
-version = "0.4.1"
 
 [[deps.StructArrays]]
 deps = ["ConstructionBase", "DataAPI", "Tables"]
@@ -2184,10 +2760,16 @@ uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
 version = "7.7.0+0"
 
 [[deps.SymbolicIndexingInterface]]
-deps = ["Accessors", "ArrayInterface", "PrettyTables", "RuntimeGeneratedFunctions", "StaticArraysCore"]
-git-tree-sha1 = "658f6d01bfe68d6bf47915bf5d868228138c7d71"
+deps = ["Accessors", "ArrayInterface", "RuntimeGeneratedFunctions", "StaticArraysCore"]
+git-tree-sha1 = "93104ca226670c0cb92ba8bc6998852ad55a2d4c"
 uuid = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
-version = "0.3.41"
+version = "0.3.43"
+
+    [deps.SymbolicIndexingInterface.extensions]
+    SymbolicIndexingInterfacePrettyTablesExt = "PrettyTables"
+
+    [deps.SymbolicIndexingInterface.weakdeps]
+    PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 
 [[deps.SymbolicLimits]]
 deps = ["SymbolicUtils"]
@@ -2211,9 +2793,9 @@ version = "3.27.0"
 
 [[deps.Symbolics]]
 deps = ["ADTypes", "ArrayInterface", "Bijections", "CommonWorldInvalidations", "ConstructionBase", "DataStructures", "DiffRules", "Distributions", "DocStringExtensions", "DomainSets", "DynamicPolynomials", "LaTeXStrings", "Latexify", "Libdl", "LinearAlgebra", "LogExpFunctions", "MacroTools", "Markdown", "NaNMath", "OffsetArrays", "PrecompileTools", "Primes", "RecipesBase", "Reexport", "RuntimeGeneratedFunctions", "SciMLBase", "Setfield", "SparseArrays", "SpecialFunctions", "StaticArraysCore", "SymbolicIndexingInterface", "SymbolicLimits", "SymbolicUtils", "TermInterface"]
-git-tree-sha1 = "8a39dd8c60cd38124c49a30ac9c9007634f7b616"
+git-tree-sha1 = "c8bc71edb71a1dcbb241a75d5f57f40804493678"
 uuid = "0c5d862f-8b57-4792-8d23-62f2024744c7"
-version = "6.39.0"
+version = "6.39.1"
 
     [deps.Symbolics.extensions]
     SymbolicsForwardDiffExt = "ForwardDiff"
@@ -2275,10 +2857,10 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
 
 [[deps.TiffImages]]
-deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedPointNumbers", "IndirectArrays", "Inflate", "Mmap", "OffsetArrays", "PkgVersion", "ProgressMeter", "SIMD", "UUIDs"]
-git-tree-sha1 = "f21231b166166bebc73b99cea236071eb047525b"
+deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedPointNumbers", "IndirectArrays", "Inflate", "Mmap", "OffsetArrays", "PkgVersion", "PrecompileTools", "ProgressMeter", "SIMD", "UUIDs"]
+git-tree-sha1 = "02aca429c9885d1109e58f400c333521c13d48a0"
 uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
-version = "0.11.3"
+version = "0.11.4"
 
 [[deps.TimerOutputs]]
 deps = ["ExprTools", "Printf"]
@@ -2341,14 +2923,16 @@ version = "0.4.1"
 
 [[deps.Unitful]]
 deps = ["Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "c0667a8e676c53d390a09dc6870b3d8d6650e2bf"
+git-tree-sha1 = "6258d453843c466d84c17a58732dda5deeb8d3af"
 uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.22.0"
-weakdeps = ["ConstructionBase", "InverseFunctions"]
+version = "1.24.0"
+weakdeps = ["ConstructionBase", "ForwardDiff", "InverseFunctions", "Printf"]
 
     [deps.Unitful.extensions]
     ConstructionBaseUnitfulExt = "ConstructionBase"
+    ForwardDiffExt = "ForwardDiff"
     InverseFunctionsUnitfulExt = "InverseFunctions"
+    PrintfExt = "Printf"
 
 [[deps.Unityper]]
 deps = ["ConstructionBase"]
@@ -2440,15 +3024,15 @@ version = "0.2.3+0"
 
 [[deps.libaom_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "522c1df09d05a71785765d19c9524661234738e9"
+git-tree-sha1 = "4bba74fa59ab0755167ad24f98800fe5d727175b"
 uuid = "a4ae2306-e953-59d6-aa16-d00cac43593b"
-version = "3.11.0+0"
+version = "3.12.1+0"
 
 [[deps.libass_jll]]
 deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "e17c115d55c5fbb7e52ebedb427a0dca79d4484e"
+git-tree-sha1 = "125eedcb0a4a0bba65b657251ce1d27c8714e9d6"
 uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
-version = "0.15.2+0"
+version = "0.17.4+0"
 
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -2457,9 +3041,9 @@ version = "5.11.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "8a22cf860a7d27e4f3498a0fe0811a7957badb38"
+git-tree-sha1 = "646634dd19587a56ee2f1199563ec056c5f228df"
 uuid = "f638f0a6-7fb0-5443-88ba-1cc74229b280"
-version = "2.0.3+0"
+version = "2.0.4+0"
 
 [[deps.libpng_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll"]
@@ -2474,16 +3058,16 @@ uuid = "075b6546-f08a-558a-be8f-8157d0f608a5"
 version = "1.10.5+0"
 
 [[deps.libvorbis_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Ogg_jll", "Pkg"]
-git-tree-sha1 = "490376214c4721cdaca654041f635213c6165cb3"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Ogg_jll"]
+git-tree-sha1 = "11e1772e7f3cc987e9d3de991dd4f6b2602663a5"
 uuid = "f27f6e37-5d2b-51aa-960f-b287f2bc3b7a"
-version = "1.3.7+2"
+version = "1.3.8+0"
 
 [[deps.libwebp_jll]]
 deps = ["Artifacts", "Giflib_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libglvnd_jll", "Libtiff_jll", "libpng_jll"]
-git-tree-sha1 = "d2408cac540942921e7bd77272c32e58c33d8a77"
+git-tree-sha1 = "4e4282c4d846e11dce56d74fa8040130b7a95cb3"
 uuid = "c5f90fcd-3b7e-5836-afba-fc50a0988cb2"
-version = "1.5.0+0"
+version = "1.6.0+0"
 
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -2509,22 +3093,30 @@ version = "10164.0.1+0"
 
 [[deps.x265_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "dcc541bb19ed5b0ede95581fb2e41ecf179527d2"
+git-tree-sha1 = "e7b67590c14d487e734dcb925924c5dc43ec85f3"
 uuid = "dfaa095f-4041-5dcd-9319-2fabd8486b76"
-version = "3.6.0+0"
+version = "4.1.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╟─1199f445-3af6-48b6-ae9b-7c77879fb9d4
-# ╟─665c5ded-f7ad-4a4c-a295-69f82aab5495
-# ╟─2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
+# ╠═665c5ded-f7ad-4a4c-a295-69f82aab5495
+# ╠═00c1a967-c4e2-44e8-b6f9-85ea65c654be
+# ╠═2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
 # ╟─4753cb46-803b-4c4c-a0ed-9e960238ae1b
 # ╟─177bd814-0795-48fb-8049-ce8d12bf1025
-# ╟─d891fbdc-59de-4179-85e1-986cd5221c50
-# ╟─d09db83c-6674-47fd-a423-4ee1ddc757b1
+# ╠═de43f959-683c-44e5-8836-8239a0386997
+# ╠═cac6333c-caa3-4eef-8462-b62d8b802d3d
+# ╟─4876df7e-0545-41d6-83ff-56f629ad85c0
+# ╟─0157fb81-15f4-46ec-9a2c-7be29dde43e8
+# ╟─92ec7201-88f2-404c-a948-717433c319e6
+# ╟─3e17838b-83c0-4b78-a5a5-44587a984bae
+# ╟─dade7d3c-4b53-4f7a-a63b-82d338512557
+# ╟─db23cb48-9fc1-40f1-b3f9-96025a5a2343
+# ╟─49f8208e-20fd-438d-804f-3f44359fc6a6
 # ╟─95776f94-e0e5-4a72-8a48-f16e177a750b
 # ╠═01847641-ce9c-4717-add6-68a091fe9bb6
+# ╟─eb358263-a6dc-4971-b13a-7fb1ac897549
 # ╟─ac00a927-cf53-4176-aa58-3ae99203f6ab
 # ╠═5eca6a6c-ebf1-4c5f-b51b-9086e1526d0a
 # ╟─f487a3f1-bfdb-4ea6-9a82-cc8c7ece298a
@@ -2534,6 +3126,7 @@ version = "3.6.0+0"
 # ╟─fae1668d-9761-4e83-968b-a90266b442de
 # ╠═3b36bab3-b7b3-437a-8e63-03b358a290dc
 # ╠═f22e0e4b-63e6-4117-b867-fb714b0e8f51
+# ╟─ba4b4c9b-7b49-4afc-9815-abebb8173611
 # ╟─49b152ce-918c-4fa9-a0c9-94ff78be9d98
 # ╠═9d422306-9c7b-4efd-bd8d-a0b80dcc139a
 # ╠═d194abf2-0e47-4a8d-b7ac-1f5192abdbb2
@@ -2541,10 +3134,21 @@ version = "3.6.0+0"
 # ╠═691bb998-b0f4-421e-b697-e722e971d280
 # ╠═dba428fe-700b-429a-a4b9-c91f9f2f49d7
 # ╠═94de6dad-68ea-4d5e-a76e-ef0829310edc
+# ╟─ad79adf5-c03d-4499-8258-b1add2f6c636
+# ╟─14b40f50-defd-420c-86da-59a3084113f9
+# ╠═4bf55868-449e-4c37-a07c-68479a772b70
+# ╠═fd8b95b8-cefe-42ab-a7d0-a9b84471d66f
 # ╟─ce2631c0-ea8b-4faa-8a4a-5908f87bf760
+# ╠═771e861c-3d35-4cfc-996f-a937acef3189
 # ╟─e62da3de-de5a-4c5f-b943-975c1971b728
+# ╟─76904814-1460-4e60-a8d2-1bbb188196b8
+# ╟─b89e6d57-050d-4373-8c48-afcf5c1e6abe
+# ╟─1762c7cc-4a7d-43af-86d5-fb94e9afa4c2
 # ╟─b4ff8899-4ac2-4c48-b2b3-3a25d8a64d70
+# ╟─1be367e1-0b24-4566-829d-b1769fe0c9e8
+# ╟─94ac531b-7403-47a4-b657-895747401876
 # ╠═8e9fc1cb-44de-4280-bcc6-f03be7a47a29
+# ╠═7070c213-922c-4858-820f-40e8b80c3cbc
 # ╟─c6f19816-6e5c-4a4d-9cb3-891055c9fae7
 # ╟─526cbd5e-0eca-4c8b-8ae7-ecdc00395abe
 # ╠═d2dc99f2-0892-487f-9b6a-fe224714a8f2
@@ -2553,29 +3157,62 @@ version = "3.6.0+0"
 # ╠═ca574392-a993-48e0-ac0e-5a2ff8809689
 # ╠═3b858db5-3b5f-465e-9901-2570a8213419
 # ╠═ec6157b9-0d3b-4e96-a098-e65044716db8
-# ╠═a280de28-b0e5-4770-a751-78353a692354
+# ╟─a280de28-b0e5-4770-a751-78353a692354
+# ╠═aa1d34de-244c-4254-8b82-7fa30767f969
+# ╟─bf7dc379-2d87-4df2-a8ae-05299d604617
 # ╠═ae5bb7ac-ade2-4ef9-8d83-84cf3215612c
+# ╠═349eaea0-8ff0-4945-a0f7-ba9bd9dc23e8
 # ╠═a2aac3a8-54ac-449a-8bc7-c6375263a102
 # ╠═c1766483-9d4e-4ac9-9cf4-eb8a680fac71
+# ╟─4d69e335-d027-4ddc-9d7c-2be3ce79e0c5
 # ╠═94d246de-d120-4d66-879f-f28076489dea
 # ╠═6dad4e2a-8521-4169-bfbd-a62991d53b5a
-# ╠═bbccea64-cc3b-45eb-a816-ef2f4ac09a5e
-# ╠═3b3d3bd4-2242-4941-9331-be465b80b778
-# ╠═3fcc4381-dd86-4989-9adf-581fcd8b4eae
-# ╠═da9f01a7-d02e-4191-b209-d9bf17337f5c
+# ╟─bbccea64-cc3b-45eb-a816-ef2f4ac09a5e
+# ╟─3b3d3bd4-2242-4941-9331-be465b80b778
+# ╟─3fcc4381-dd86-4989-9adf-581fcd8b4eae
+# ╠═a1714691-abc4-453e-b187-186ac91bfdd8
+# ╠═dc75174d-bee2-492c-bb69-0b7825030258
+# ╠═b1bed2cc-3112-4dad-92bd-61e665df141b
+# ╟─cc14f4d0-3392-4350-85e3-65902bb5f224
+# ╟─c3392c39-5d2b-4141-85b6-da0b59e23eeb
+# ╟─e8da9ea0-d6ff-4669-9d1f-78a1ac12385b
+# ╠═640b75b0-5050-4540-a470-3d0855aa96ac
+# ╟─f346a136-670d-4264-bfb0-d1f4bf0528e7
+# ╠═83c6e894-c423-4713-a434-e66606eeddf4
+# ╟─da9f01a7-d02e-4191-b209-d9bf17337f5c
+# ╟─1c3d05e3-a95e-4307-b21f-73355fc9cfaf
 # ╠═32c19626-6d30-48a2-9d71-bc15ce69512f
 # ╠═4e8982fd-e2b5-484c-be89-b94be5225ab7
 # ╠═e33abaac-3843-4dfd-a719-d9feed5ce547
-# ╠═263eebec-c1e7-4b77-ad69-da591b411739
-# ╠═a14c8125-29c9-4fe7-924a-589bc1f8fed1
-# ╠═c1559ac5-1d14-45ba-8edd-3c21bc45725b
-# ╠═1a69ce14-3fdf-47f5-b10b-0fc9c8d819eb
-# ╟─c3392c39-5d2b-4141-85b6-da0b59e23eeb
-# ╠═e8da9ea0-d6ff-4669-9d1f-78a1ac12385b
-# ╠═640b75b0-5050-4540-a470-3d0855aa96ac
-# ╠═f346a136-670d-4264-bfb0-d1f4bf0528e7
-# ╠═83c6e894-c423-4713-a434-e66606eeddf4
-# ╠═b406e424-a761-4df8-8f6a-d517f0de9fdb
+# ╟─119dc126-b00e-4379-9214-82c8311cfd77
+# ╟─30bcef0b-abcb-46d4-84e2-820e40d3aa6c
+# ╠═9e8ff58b-9f5b-4d44-9f5c-8da56ce07408
+# ╠═b59663af-5e25-4cd6-956c-c480801efb4b
+# ╠═ebd3712f-d1ea-47a4-8cb9-e054760cc1a6
+# ╠═771856d1-8166-4a81-a55b-500367c115a6
+# ╠═3b3b143a-c8a7-4ebb-869c-18b1dce3df76
+# ╠═d31661c3-a16e-4b2d-b45d-98368e8fd8d6
+# ╟─e3e0f0b7-478c-41c5-923c-f00c39b0f16f
+# ╟─b406e424-a761-4df8-8f6a-d517f0de9fdb
+# ╠═9cbce389-05a2-4848-b452-0d8c89583c43
+# ╠═03cfe8d0-2556-4488-8220-b2b30a967141
+# ╠═fda2e02f-3efb-45bd-b81c-02af941623cf
+# ╠═f955fca1-f8ca-434a-9b74-a7a7053858a9
+# ╠═f488d269-bea7-4a96-b7a6-8aade72aa576
+# ╠═f33cc185-1249-4c37-8a5c-324734376857
+# ╠═dfc03456-f2db-4b1b-b38a-0523881a8398
+# ╠═be6e034f-4246-4c50-a71d-448b78b9ad2a
+# ╠═b582d82b-945c-4c7e-81f7-52fd1b616480
+# ╠═c2e3e9af-9434-4fbe-a35f-bde32564103d
+# ╟─5f5265fe-9790-48fa-8947-876ec161e20b
+# ╠═ba0a191d-1dc2-454d-80cd-79fe0c739c00
+# ╠═7242500d-d754-4c09-99a4-83f94142e654
+# ╟─ab48a94b-f252-4023-b134-548c0870b393
+# ╠═c2f8cd38-b602-4848-b662-cc5c26a989b4
+# ╟─da61268e-1be4-44b1-87f1-ba349db93150
+# ╟─fdebd8ba-beac-4025-97a2-af232c8d6471
+# ╟─eb5d6110-38d6-46ec-b59d-8615afc3f6f7
+# ╟─cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
 # ╟─23c423cd-5227-4eec-a1f1-9fb6e209678a
 # ╠═f8c80b48-a9a1-443d-8eaf-b87c7a823830
 # ╠═ae87f7e8-4305-4a86-9f4a-e39cb63a1bed
@@ -2583,8 +3220,11 @@ version = "3.6.0+0"
 # ╠═d14f8af2-009e-4eab-af08-7cf3c06d5814
 # ╠═94a1ca60-444e-4d0b-918a-fe228cca25f4
 # ╠═c9a56f44-0f24-4074-bdf5-219cbe9c015e
-# ╠═e3e0f0b7-478c-41c5-923c-f00c39b0f16f
-# ╠═c9508a0b-6220-49b2-b9fb-727174525a57
-# ╠═610e135f-075d-4da6-a891-79e484d5b49d
+# ╠═ed20ead3-9f8f-4b15-8e58-a25417cd72a2
+# ╠═d438d77a-0828-48c9-865c-0ecb4bc85531
+# ╠═8776d9df-73d0-498a-be5b-c937a33a3c85
+# ╠═34de48ea-2fff-4045-b786-311bab322916
+# ╠═36464a69-184f-47ea-bc02-71dd5642423e
+# ╠═7818921f-a2f3-46d5-9341-6ee6884692ad
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
