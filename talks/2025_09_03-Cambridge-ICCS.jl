@@ -28,12 +28,6 @@ using LinearAlgebra
 # ╔═╡ ae5bb7ac-ade2-4ef9-8d83-84cf3215612c
 using Enzyme
 
-# ╔═╡ f488d269-bea7-4a96-b7a6-8aade72aa576
-using SparseArrays
-
-# ╔═╡ ba0a191d-1dc2-454d-80cd-79fe0c739c00
-using Krylov
-
 # ╔═╡ 2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 ChooseDisplayMode()
 
@@ -42,8 +36,8 @@ html"""
 <h1> Differentiable programming for scientific computing with Enzyme and Julia </h1>
 
 <div style="text-align: center;">
-Aug 28th 2025 <br>
-FerriteCon 2025
+Sep 3rd 2025 <br>
+Cambridge ICCS 2025
 <br><br>
 Valentin Churavy
 <br><br>
@@ -81,6 +75,21 @@ I work with science teams to help them maximise their usage of Julia.
    JuliaLab@MIT
 5. RSE/PostDoc in Augsburg & Mainz -- High-Performance Scientific Computing
 """
+
+# ╔═╡ 948940a0-e6ed-4020-b68a-626594de7f09
+md"""
+## Parameter estimation
+
+The choice of drag coefficients for the surface of the ocean, has an impact on the depth of the mixing layer. Below we have parameter sweep done using Oceananigans.jl.
+"""
+
+# ╔═╡ f502e96f-29e7-46da-8db3-558a949a976d
+LocalResource("./oceananigans_drag_coefficient.png")
+
+# ╔═╡ b4ad3469-39e9-44e9-af81-434e69bd6c02
+question_box("""
+Given real-world measurments (or even synthetic ones) how do we "learn" the drag coefficent (parameter estimation)?
+""")
 
 # ╔═╡ 177bd814-0795-48fb-8049-ce8d12bf1025
 md"""
@@ -123,6 +132,71 @@ function ∇simulate(N, S, x₀, y, θ, n)
     dθ = MixedDuplicated(θ, Ref(Enzyme.make_zero(θ)))
     Enzyme.autodiff(Enzyme.Reverse, simulate, Const(N), Const(S), Const(x₀), Const(y), dθ, Const(n))
     return dθ.dval[]
+end
+
+# ╔═╡ 0157fb81-15f4-46ec-9a2c-7be29dde43e8
+function plot_gradientfield(N, S, x₀, y, θ₁, θ₂, n)
+    θ_space = collect(Iterators.product(θ₁, θ₂))
+    gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
+
+    fig, ax, hm = heatmap(
+        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-3, 10^3)
+    )
+    Colorbar(fig[:, end + 1], hm)
+
+    streamplot!(
+        ax, (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
+        alpha = 0.5,
+        colorscale = log10, color = p -> :red,
+        arrow_size = 10
+    )
+    return fig
+end
+
+# ╔═╡ 92ec7201-88f2-404c-a948-717433c319e6
+let
+	x₀ = -0.3
+    y = 2.0
+    n = 4
+
+    θ₁ = -4:0.01:4
+    θ₂ = -4:0.01:4
+    θ_space = collect(Iterators.product(θ₁, θ₂))
+
+	L_space = simulate.(N, S, x₀, y, θ_space, n);
+
+	fig = Figure(size = (1000, 400))
+	ax = Axis(fig[1,1], title="Loss landscape", xlabel="θ₁", ylabel="θ₂")
+	
+    hm = heatmap!(ax,
+        θ₁, θ₂, L_space,
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-5, 10^5)
+    )
+    Colorbar(fig[1, 2], hm)
+
+	gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
+	ax2 = Axis(fig[1, 3], title="Gradient landscape", xlabel="δθ₁", ylabel="δθ₂")
+
+	hm = heatmap!(ax2,
+        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
+        colorscale = log10,
+        colormap = Makie.Reverse(:Blues),
+        colorrange = (10^-3, 10^3)
+    )
+    Colorbar(fig[1, 4], hm)
+
+	streamplot!(ax2,
+        (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
+        alpha = 0.5,
+        colorscale = log10, color = p -> :red,
+        arrow_size = 10
+    )
+    fig
 end
 
 # ╔═╡ 3e17838b-83c0-4b78-a5a5-44587a984bae
@@ -701,245 +775,14 @@ $(LocalResource("./fwd_backward.png"))
 
 """
 
-# ╔═╡ b406e424-a761-4df8-8f6a-d517f0de9fdb
+# ╔═╡ 5a643f62-e3b1-4670-8d4c-cf0229917e1c
 md"""
-## Matrix-free methods
-"""
-
-# ╔═╡ 9cbce389-05a2-4848-b452-0d8c89583c43
-function maybe_duplicated(f, df)
-    if !Enzyme.Compiler.guaranteed_const(typeof(f))
-        return Duplicated(f, df)
-    else
-        return Const(f)
-    end
-end
-
-# ╔═╡ 03cfe8d0-2556-4488-8220-b2b30a967141
-begin
-	struct JacobianOperator{F, A}
-	    f::F # res = F(u)
-	    u::A
-		res::A
-	end
-	JacobianOperator(F, u) = JacobianOperator(F, u, F(u))
-end
-
-# ╔═╡ fda2e02f-3efb-45bd-b81c-02af941623cf
-begin
-	Base.size(J::JacobianOperator) = (length(J.res), length(J.u))
-	Base.eltype(J::JacobianOperator) = eltype(J.u)
-end
-
-# ╔═╡ f955fca1-f8ca-434a-9b74-a7a7053858a9
-function LinearAlgebra.mul!(out, J::JacobianOperator, v)
-    f_cache = Enzyme.make_zero(J.f)
-    dres = autodiff(
-        Forward,
-        maybe_duplicated(J.f, f_cache), Duplicated,
-        Duplicated(J.u, reshape(v, size(J.u)))
-    ) |> only
-	out .= dres
-    return nothing
-end
-
-# ╔═╡ f33cc185-1249-4c37-8a5c-324734376857
-function Base.collect(JOp::JacobianOperator)
-    N, M = size(JOp)
-    v = zeros(eltype(JOp), M)
-    out = zeros(eltype(JOp), N)
-    J = SparseMatrixCSC{eltype(v), Int}(undef, size(JOp)...)
-    for j in 1:M
-        out .= 0.0
-        v .= 0.0
-        v[j] = 1.0
-        mul!(out, JOp, v)
-        for i in 1:N
-            if out[i] != 0
-                J[i, j] = out[i]
-            end
-        end
-    end
-    return J
-end
-
-# ╔═╡ 0157fb81-15f4-46ec-9a2c-7be29dde43e8
-function plot_gradientfield(N, S, x₀, y, θ₁, θ₂, n)
-    θ_space = collect(Iterators.product(θ₁, θ₂))
-    gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
-
-    fig, ax, hm = heatmap(
-        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
-        colorscale = log10,
-        colormap = Makie.Reverse(:Blues),
-        colorrange = (10^-3, 10^3)
-    )
-    Colorbar(fig[:, end + 1], hm)
-
-    streamplot!(
-        ax, (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
-        alpha = 0.5,
-        colorscale = log10, color = p -> :red,
-        arrow_size = 10
-    )
-    return fig
-end
-
-# ╔═╡ 92ec7201-88f2-404c-a948-717433c319e6
-let
-	x₀ = -0.3
-    y = 2.0
-    n = 4
-
-    θ₁ = -4:0.01:4
-    θ₂ = -4:0.01:4
-    θ_space = collect(Iterators.product(θ₁, θ₂))
-
-	L_space = simulate.(N, S, x₀, y, θ_space, n);
-
-	fig = Figure(size = (1000, 400))
-	ax = Axis(fig[1,1], title="Loss landscape", xlabel="θ₁", ylabel="θ₂")
-	
-    hm = heatmap!(ax,
-        θ₁, θ₂, L_space,
-        colorscale = log10,
-        colormap = Makie.Reverse(:Blues),
-        colorrange = (10^-5, 10^5)
-    )
-    Colorbar(fig[1, 2], hm)
-
-	gradient_field = ∇simulate.(N, S, x₀, y, θ_space, n)
-	ax2 = Axis(fig[1, 3], title="Gradient landscape", xlabel="δθ₁", ylabel="δθ₂")
-
-	hm = heatmap!(ax2,
-        θ₁, θ₂, map(x -> sqrt(x[1]^2 + x[2]^2), gradient_field),
-        colorscale = log10,
-        colormap = Makie.Reverse(:Blues),
-        colorrange = (10^-3, 10^3)
-    )
-    Colorbar(fig[1, 4], hm)
-
-	streamplot!(ax2,
-        (θ) -> -∇simulate(N, S, x₀, y, θ, n), θ₁, θ₂,
-        alpha = 0.5,
-        colorscale = log10, color = p -> :red,
-        arrow_size = 10
-    )
-    fig
-end
-
-# ╔═╡ dfc03456-f2db-4b1b-b38a-0523881a8398
-JOp = JacobianOperator(F, [1.0, 1.0])
-
-# ╔═╡ be6e034f-4246-4c50-a71d-448b78b9ad2a
-collect(JOp)
-
-# ╔═╡ b582d82b-945c-4c7e-81f7-52fd1b616480
-let
-	u = zeros(3)
-	mul!(u, JOp, x1)
-	u
-end
-
-# ╔═╡ c2e3e9af-9434-4fbe-a35f-bde32564103d
-J*x1
-
-# ╔═╡ 5f5265fe-9790-48fa-8947-876ec161e20b
-md"""
-## Newton-Krylov
-
-$F(u) = 0$
-$J(F, u) * x = -F(u)$
-
-Problems of the form $F(u) = 0$ can be solved with a Newton method, this particular helpful for finding an iterative solution of nonlinear equations.
-
-We can use a Krylov solver "gmres" to solve the linear system $Ax = -b$ without "materializing" $A$. This is called a matrix-free method.
-"""
-
-# ╔═╡ 7242500d-d754-4c09-99a4-83f94142e654
-function G2(x)
-    [
-		x[1]^2 + x[2]^2 - 2,
-		exp(x[1] - 1) + x[2]^2 - 2
-	]
-end
-
-# ╔═╡ ab48a94b-f252-4023-b134-548c0870b393
-let
-	xs = LinRange(-3, 4, 1000)
-	ys = LinRange(-5, 5, 1000)
-	
-	levels = [0.1, 0.25, 0.5:2:10..., 10.0:10:200..., 200:100:4000...]
-	
-	fig, ax = contour(xs, ys, (x, y) -> norm(G2([x, y])); levels)
-	fig
-end
-
-# ╔═╡ c2f8cd38-b602-4848-b662-cc5c26a989b4
-function newton_krylov!(F, u;
-						tol_rel = 1.0e-6,
-        				tol_abs = 1.0e-12,
-						max_niter = 50,
-						callback = x->nothing)
-	
-	res = F(u)
-	n_res = norm(res)
-	callback(u)
-
-	tol = tol_rel * n_res + tol_abs
-	iter = 0
-	
-	while n_res > tol && iter <= max_niter
-		# Ax = -b
-		J = JacobianOperator(F, u, res)
-		x, stats = gmres(J, -res)
-
-		# Take a step in the newton direction
-		u .+= x
-
-		res = F(u)
-		n_res = norm(res)
-		callback(u)
-		if isinf(n_res) || isnan(n_res)
-			error("Solver blew up")
-		end
-		iter += 1
-	end
-	return u, (; solved = n_res <= tol, iter)
-end
-
-# ╔═╡ da61268e-1be4-44b1-87f1-ba349db93150
-trace_1 = let x₀ = [2.0, 0.5]
-    xs = Vector{Tuple{Float64, Float64}}(undef, 0)
-    hist(x) = (push!(xs, (x[1], x[2])); nothing)
-    _ = newton_krylov!(G2, x₀, callback = hist)
-	xs
-end
-
-# ╔═╡ fdebd8ba-beac-4025-97a2-af232c8d6471
-trace_2 = let x₀ = [2.5, 3.0]
-    xs = Vector{Tuple{Float64, Float64}}(undef, 0)
-    hist(x) = (push!(xs, (x[1], x[2])); nothing)
-    newton_krylov!(G2, x₀, callback = hist)
-    xs
-end
-
-# ╔═╡ eb5d6110-38d6-46ec-b59d-8615afc3f6f7
-let
-	xs = LinRange(-3, 4, 1000)
-	ys = LinRange(-5, 5, 1000)
-	
-	levels = [0.1, 0.25, 0.5:2:10..., 10.0:10:200..., 200:100:4000...]
-	
-	fig, ax = contour(xs, ys, (x, y) -> norm(G2([x, y])); levels)
-	lines!(ax, trace_1)
-	lines!(ax, trace_2)
-	fig
-end
+## Conclusion
+""" |> TODO
 
 # ╔═╡ cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
 md"""
-# AD Curiosities
+# Appendix: AD Curiosities
 """
 
 # ╔═╡ 23c423cd-5227-4eec-a1f1-9fb6e209678a
@@ -983,6 +826,12 @@ let dx = zeros(3)
 	dx
 end
 
+# ╔═╡ b1eb84ea-bca7-412d-9ada-2f3f7fc3e676
+md"""
+!!! note
+    The same mathematical operation ("take the maximum") has different gradients depending on the implementation.
+"""
+
 # ╔═╡ ed20ead3-9f8f-4b15-8e58-a25417cd72a2
 abs_right(x) = x < 0 ? -x : x
 
@@ -1009,24 +858,27 @@ autodiff(Forward, abs_left, Duplicated(0.0,1.0))
 # ╔═╡ 7818921f-a2f3-46d5-9341-6ee6884692ad
 autodiff(Forward, abs_center, Duplicated(0.0,1.0))
 
+# ╔═╡ 99465829-e248-43bf-97aa-44d560f9dc76
+md"""
+!!! note
+    While all three answers differ, they are all correct, and represent a possible sub-gradient that we can choose at that point. 
+"""
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-Krylov = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 
 [compat]
 CairoMakie = "~0.15.6"
 Enzyme = "~0.13.69"
 ForwardDiff = "~1.0.1"
-Krylov = "~0.10.1"
 PlutoTeachingTools = "~0.4.5"
 PlutoUI = "~0.7.71"
 Symbolics = "~6.39.1"
@@ -1038,7 +890,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "e1747ea0d5ef7b21ea7d0ef24df512aea2b7d9bf"
+project_hash = "71df5cfb5787592e9e04c9fce0b5923e799759b0"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "60665b326b75db6517939d0e1875850bc4a54368"
@@ -1923,12 +1775,6 @@ deps = ["Distributions", "DocStringExtensions", "FFTW", "Interpolations", "Stats
 git-tree-sha1 = "ba51324b894edaf1df3ab16e2cc6bc3280a2f1a7"
 uuid = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 version = "0.6.10"
-
-[[deps.Krylov]]
-deps = ["LinearAlgebra", "Printf", "SparseArrays"]
-git-tree-sha1 = "b94257a1a8737099ca40bc7271a8b374033473ed"
-uuid = "ba0b0d4f-ebba-5204-a429-3ac8c609bfb7"
-version = "0.10.1"
 
 [[deps.LAME_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -3104,6 +2950,9 @@ version = "4.1.0+0"
 # ╠═2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
 # ╟─4753cb46-803b-4c4c-a0ed-9e960238ae1b
+# ╟─948940a0-e6ed-4020-b68a-626594de7f09
+# ╟─f502e96f-29e7-46da-8db3-558a949a976d
+# ╟─b4ad3469-39e9-44e9-af81-434e69bd6c02
 # ╟─177bd814-0795-48fb-8049-ce8d12bf1025
 # ╠═de43f959-683c-44e5-8836-8239a0386997
 # ╠═cac6333c-caa3-4eef-8462-b62d8b802d3d
@@ -3193,25 +3042,7 @@ version = "4.1.0+0"
 # ╠═3b3b143a-c8a7-4ebb-869c-18b1dce3df76
 # ╠═d31661c3-a16e-4b2d-b45d-98368e8fd8d6
 # ╟─e3e0f0b7-478c-41c5-923c-f00c39b0f16f
-# ╟─b406e424-a761-4df8-8f6a-d517f0de9fdb
-# ╠═9cbce389-05a2-4848-b452-0d8c89583c43
-# ╠═03cfe8d0-2556-4488-8220-b2b30a967141
-# ╠═fda2e02f-3efb-45bd-b81c-02af941623cf
-# ╠═f955fca1-f8ca-434a-9b74-a7a7053858a9
-# ╠═f488d269-bea7-4a96-b7a6-8aade72aa576
-# ╠═f33cc185-1249-4c37-8a5c-324734376857
-# ╠═dfc03456-f2db-4b1b-b38a-0523881a8398
-# ╠═be6e034f-4246-4c50-a71d-448b78b9ad2a
-# ╠═b582d82b-945c-4c7e-81f7-52fd1b616480
-# ╠═c2e3e9af-9434-4fbe-a35f-bde32564103d
-# ╟─5f5265fe-9790-48fa-8947-876ec161e20b
-# ╠═ba0a191d-1dc2-454d-80cd-79fe0c739c00
-# ╠═7242500d-d754-4c09-99a4-83f94142e654
-# ╟─ab48a94b-f252-4023-b134-548c0870b393
-# ╠═c2f8cd38-b602-4848-b662-cc5c26a989b4
-# ╟─da61268e-1be4-44b1-87f1-ba349db93150
-# ╟─fdebd8ba-beac-4025-97a2-af232c8d6471
-# ╟─eb5d6110-38d6-46ec-b59d-8615afc3f6f7
+# ╠═5a643f62-e3b1-4670-8d4c-cf0229917e1c
 # ╟─cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
 # ╟─23c423cd-5227-4eec-a1f1-9fb6e209678a
 # ╠═f8c80b48-a9a1-443d-8eaf-b87c7a823830
@@ -3220,11 +3051,13 @@ version = "4.1.0+0"
 # ╠═d14f8af2-009e-4eab-af08-7cf3c06d5814
 # ╠═94a1ca60-444e-4d0b-918a-fe228cca25f4
 # ╠═c9a56f44-0f24-4074-bdf5-219cbe9c015e
+# ╟─b1eb84ea-bca7-412d-9ada-2f3f7fc3e676
 # ╠═ed20ead3-9f8f-4b15-8e58-a25417cd72a2
 # ╠═d438d77a-0828-48c9-865c-0ecb4bc85531
 # ╠═8776d9df-73d0-498a-be5b-c937a33a3c85
 # ╠═34de48ea-2fff-4045-b786-311bab322916
 # ╠═36464a69-184f-47ea-bc02-71dd5642423e
 # ╠═7818921f-a2f3-46d5-9341-6ee6884692ad
+# ╟─99465829-e248-43bf-97aa-44d560f9dc76
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
