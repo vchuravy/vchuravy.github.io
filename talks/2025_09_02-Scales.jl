@@ -647,7 +647,7 @@ md"""
 
 # ╔═╡ f8b4d238-29d9-4b7a-962a-2cd1efcc488d
 md"""
-## Portability case study: Float16
+# Portability case study: Float16
 """
 
 # ╔═╡ 4a855ab4-6888-478d-8fd4-22ed86bafc5e
@@ -663,6 +663,15 @@ md"""
 - ~4x speedup with Float16 and 2x speedup with Float32 over Float64
 - Qualitative results equivalent between Float64 and Float16
 
+$(LocalResource("./shallow_water.png"))
+"""
+
+# ╔═╡ 3afc29ac-1060-4cc0-8639-2bb249e8f864
+md"""
+##
+
+$(LocalResource("./shallow_water_perf.png"))
+Reproduced from https://doi.org/10.1029/2021MS002684
 """
 
 # ╔═╡ cc5fd918-d77f-4034-b3d1-048f07b5ecab
@@ -724,7 +733,7 @@ md"""
 
 # ╔═╡ fccebea2-04ea-4533-9a16-42bf81eae0b2
 md"""
-## Level 1 BLAS showdown (Fugaku/ARM based supercomputer)
+## Level 1 BLAS showdown (Fugaku/A64FX)
 
 ```julia
 function axpy!(a, x, y)
@@ -2664,6 +2673,7 @@ version = "4.1.0+0"
 # ╟─eaf5e236-a00e-4144-8098-3866abe55f58
 # ╟─f8b4d238-29d9-4b7a-962a-2cd1efcc488d
 # ╟─4a855ab4-6888-478d-8fd4-22ed86bafc5e
+# ╟─3afc29ac-1060-4cc0-8639-2bb249e8f864
 # ╟─cc5fd918-d77f-4034-b3d1-048f07b5ecab
 # ╟─2b0651bf-b15a-44ea-9ca6-ead9d0f8e61b
 # ╟─2a838639-cc3c-414c-8f9c-cf78a73833ee
