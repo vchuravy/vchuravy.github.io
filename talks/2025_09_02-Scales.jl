@@ -58,7 +58,7 @@ Numerical Mathematics, University of Mainz
 
 # ╔═╡ 4f09f2b5-dc51-4a1d-afe0-90859d9744e5
 md"""
-## Why Julia? 😍
+## Why Julia?
 """
 
 # ╔═╡ d7cec985-0ad2-4255-a9c5-8d999f1dad03
@@ -195,7 +195,7 @@ Status `~/example/Project.toml`
 
 # ╔═╡ 3260a7a9-af6f-4c56-a9a7-7a12af6be76c
 md"""
-### Binaries included
+## Binaries included
 
 !!! note
     Major usability pain points of modern languages is the integration of dependencies from C/C++, reliably across multiple operating systems.
@@ -242,7 +242,7 @@ md"""
 
 # ╔═╡ 17f44a7b-3f63-40e0-97b8-07bbbf6a37be
 md"""
-### Example: UCX.jl
+## Example: UCX.jl
 
 ```julia
 function ucp_put_nb(ep, buffer, length, remote_addr, rkey, cb)
@@ -395,12 +395,12 @@ md"""
 
 # ╔═╡ 0272643a-14ca-488f-9040-8b577adffd5f
 md"""
-## GPU computing in Julia
+# GPU computing in Julia
 """
 
 # ╔═╡ f8e3d046-dc96-45e1-a3a0-9f271606b5fe
 md"""
-### Composable infrastructure
+## Composable infrastructure
 
 #### Core
 - [GPUCompiler.jl](https://github.com/JuliaGPU/GPUCompiler.jl): Takes native Julia code and compiles it directly to GPUs
@@ -418,7 +418,7 @@ md"""
 
 # ╔═╡ 249d6258-0e50-4b5f-910b-2af6a0248f28
 md"""
-### Different layers of abstraction
+## Different layers of abstraction
 
 #### Vendor-specific
 ```julia
@@ -459,7 +459,7 @@ Y .= a .* X .+ Y
 
 # ╔═╡ 521ff3a1-b62b-4f9b-9f95-6fdee4aeac81
 md"""
-#### How to use KernelAbstractions
+## How to use KernelAbstractions
 
 - Use `@kernel function mykernel(args...) end` to write a GPU-style program
 - Instantiate kernel for a backend `kernel = mykernel(backend)`
@@ -509,7 +509,7 @@ vadd_kernel(a, b, c; ndrange=size(c))
 
 # ╔═╡ 3e49a11b-8ae6-4c2b-a97e-1ff67b178543
 md"""
-### High-level array based programming
+## High-level array based programming
 
 Julia and GPUArrays.jl provide support for an efficient GPU programming environment build around array abstractions and higher-order functions.
 
@@ -544,7 +544,7 @@ Array types -- **where** memory resides and **how** code is executed.
 
 # ╔═╡ 11119cba-2c78-4199-8550-bc4cafd7e5d6
 md"""
-### What makes an application portable?
+## What makes an application portable?
 
 1. Can I **run** it on a different compute architecture
     1. Different CPU architectures
@@ -558,7 +558,7 @@ md"""
 
 # ╔═╡ e37cb359-3a8e-4c21-bbdb-4ff33b31d751
 md"""
-### Adapt.jl
+## Adapt.jl
 
 [Adapt.jl](https://github.com/JuliaGPU/Adapt.jl) is a lightweight dependency that you can use to convert complex structures from CPU to GPU.
 
@@ -683,6 +683,11 @@ First attempt: Naively lowering `Float16` to LLVM’s `half` type.
 GCC 12 supports this as: `-fexcess-precision=16`
 """
 
+# ╔═╡ 2b0651bf-b15a-44ea-9ca6-ead9d0f8e61b
+md"""
+##
+"""
+
 # ╔═╡ 2a838639-cc3c-414c-8f9c-cf78a73833ee
 TwoColumn(md"""
 ```llvm
@@ -717,6 +722,46 @@ md"""
     We are emulating `Float16` semantics on platforms that do not have native support. While this does lead to worse performance this allows us the validate and develop programs in a portable manner.
 """
 
+# ╔═╡ fccebea2-04ea-4533-9a16-42bf81eae0b2
+md"""
+## Level 1 BLAS showdown (Fugaku/ARM based supercomputer)
+
+```julia
+function axpy!(a, x, y)
+    @simd for i in eachindex(x, y)
+        @inbounds y[i] = muladd(a, x[i], y[i])
+   end
+   return y
+end
+```
+
+vs
+```
+LinearAlgebra.BLAS.axpy!(a, x, y)
+```
+"""
+
+# ╔═╡ e5a54aab-5400-479c-8f99-597cce847094
+md"""
+##
+
+$(LocalResource("./fugaku_float64.png"))
+"""
+
+# ╔═╡ 125322e5-e0b8-4b11-8500-5115ddeed52e
+md"""
+##
+
+$(LocalResource("./fugaku_float32.png"))
+"""
+
+# ╔═╡ 5a85a63a-6804-4e20-8841-17aa753effdc
+md"""
+##
+
+$(LocalResource("./fugaku_float16.png"))
+"""
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -729,16 +774,6 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-
-[compat]
-CairoMakie = "~0.15.6"
-CondaPkg = "~0.2.31"
-MPI = "~0.20.22"
-PlutoTeachingTools = "~0.4.5"
-PlutoUI = "~0.7.71"
-PythonCall = "~0.9.27"
-RDatasets = "~0.7.7"
-StaticArrays = "~1.9.15"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -747,7 +782,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.6"
 manifest_format = "2.0"
-project_hash = "223e78cd884a09591744e5f0250fc0106718d34a"
+project_hash = "c15db294bff9a97873742d08876099afa9c13b92"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -980,9 +1015,9 @@ version = "0.1.4"
 
 [[deps.CondaPkg]]
 deps = ["JSON3", "Markdown", "MicroMamba", "Pidfile", "Pkg", "Preferences", "Scratch", "TOML", "pixi_jll"]
-git-tree-sha1 = "04dcfa548a95032ca3756aa25664ad9a11aece75"
+git-tree-sha1 = "63b2893bf4d87854257185fcda672ceefb0f8ffa"
 uuid = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
-version = "0.2.31"
+version = "0.2.30"
 
 [[deps.ConstructionBase]]
 git-tree-sha1 = "b4b092499347b18a015186eae3042f72267106cb"
@@ -1271,10 +1306,10 @@ uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
 version = "8.5.1+0"
 
 [[deps.Hwloc_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "92f65c4d78ce8cdbb6b68daf88889950b0a99d11"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "XML2_jll", "Xorg_libpciaccess_jll"]
+git-tree-sha1 = "3d468106a05408f9f7b6f161d9e7715159af247b"
 uuid = "e33a78d0-f292-5ffc-b300-72abe9b543c8"
-version = "2.12.1+0"
+version = "2.12.2+0"
 
 [[deps.HypergeometricFunctions]]
 deps = ["LinearAlgebra", "OpenLibm_jll", "SpecialFunctions"]
@@ -1661,9 +1696,9 @@ version = "2025.2.0+0"
 
 [[deps.MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MPIPreferences", "MPItrampoline_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "PkgVersion", "PrecompileTools", "Requires", "Serialization", "Sockets"]
-git-tree-sha1 = "892676019c58f34e38743bc989b0eca5bce5edc5"
+git-tree-sha1 = "a61ecf714d71064b766d481ef43c094d4c6e3c52"
 uuid = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-version = "0.20.22"
+version = "0.20.23"
 
     [deps.MPI.extensions]
     AMDGPUExt = "AMDGPU"
@@ -2180,9 +2215,9 @@ version = "0.1.2"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "b8693004b385c842357406e3af647701fe783f98"
+git-tree-sha1 = "cbea8a6bd7bed51b1619658dec70035e07b8502f"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.9.15"
+version = "1.9.14"
 weakdeps = ["ChainRulesCore", "Statistics"]
 
     [deps.StaticArrays.extensions]
@@ -2411,6 +2446,12 @@ git-tree-sha1 = "cd1659ba0d57b71a464a29e64dbc67cfe83d54e7"
 uuid = "76eceee3-57b5-4d4a-8e66-0e911cebbf60"
 version = "1.6.1"
 
+[[deps.XML2_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
+git-tree-sha1 = "b8b243e47228b4a3877f1dd6aee0c5d56db7fcf4"
+uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
+version = "2.13.6+1"
+
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "fee71455b0aaa3440dfdd54a9a36ccef829be7d4"
@@ -2446,6 +2487,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libX11_jll"]
 git-tree-sha1 = "7ed9347888fac59a618302ee38216dd0379c480d"
 uuid = "ea2f1a96-1ddc-540d-b46f-429655e07cfa"
 version = "0.9.12+0"
+
+[[deps.Xorg_libpciaccess_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Zlib_jll"]
+git-tree-sha1 = "4909eb8f1cbf6bd4b1c30dd18b2ead9019ef2fad"
+uuid = "a65dc6b1-eb27-53a1-bb3e-dea574b5389e"
+version = "0.18.1+0"
 
 [[deps.Xorg_libxcb_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libXau_jll", "Xorg_libXdmcp_jll"]
@@ -2618,7 +2665,12 @@ version = "4.1.0+0"
 # ╟─f8b4d238-29d9-4b7a-962a-2cd1efcc488d
 # ╟─4a855ab4-6888-478d-8fd4-22ed86bafc5e
 # ╟─cc5fd918-d77f-4034-b3d1-048f07b5ecab
+# ╟─2b0651bf-b15a-44ea-9ca6-ead9d0f8e61b
 # ╟─2a838639-cc3c-414c-8f9c-cf78a73833ee
 # ╟─6277d1a6-1a01-4a88-9ec6-1171d6e015ec
+# ╟─fccebea2-04ea-4533-9a16-42bf81eae0b2
+# ╟─e5a54aab-5400-479c-8f99-597cce847094
+# ╟─125322e5-e0b8-4b11-8500-5115ddeed52e
+# ╟─5a85a63a-6804-4e20-8841-17aa753effdc
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
