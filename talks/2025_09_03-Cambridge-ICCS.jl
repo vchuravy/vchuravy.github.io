@@ -71,7 +71,7 @@ I work with science teams to help them maximise their usage of Julia.
 1. B.Sc. Cognitive Science, 2014
    University of Osnabrück
 2. Research in applied Machine Learning, 2015-2017
-   Okinawa Institute of Science and Technology, JapanOxford-avatar
+   Okinawa Institute of Science and Technology, Japan
 3. M.Sc. Computer Science, 2019
    JuliaLab@MIT
 4. Ph.D. Computer Science, 2024
