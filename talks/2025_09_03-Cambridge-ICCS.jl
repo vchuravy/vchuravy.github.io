@@ -39,12 +39,13 @@ html"""
 Sep 3rd 2025 <br>
 Cambridge ICCS 2025
 <br><br>
-Valentin Churavy
+Valentin Churavy (1, 2) and Milan Klöwer (3)
 <br><br>
-High Performance Scientific Computing, University of Augsburg <br>
-Numerical Mathematics, University of Mainz 
+(1) High Performance Scientific Computing, University of Augsburg <br>
+(2) Numerical Mathematics, University of Mainz <br>
+(3) University of Oxford
 <br><br>
-@vchuravy
+@vchuravy and @milankl
 </div>
 
  <table>
@@ -52,6 +53,8 @@ Numerical Mathematics, University of Mainz
 <td><img src="https://upload.wikimedia.org/wikipedia/commons/e/e9/Universit%C3%A4t_Augsburg_logo.svg" width=100px></td>
 
 <td><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Johannes_Gutenberg-Universit%C3%A4t_Mainz_logo.svg" width=200px></td>
+
+<td><img src="https://github.com/user-attachments/assets/b4c8de30-3b0c-4968-a657-252b46e0978c" width=200px></td>
         </tr>
 </table>
 """
