@@ -54,7 +54,7 @@ Valentin Churavy (1, 2) and Milan Klöwer (3)
 
 <td><img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Johannes_Gutenberg-Universit%C3%A4t_Mainz_logo.svg" width=200px></td>
 
-<td><img src="https://github.com/user-attachments/assets/b4c8de30-3b0c-4968-a657-252b46e0978c" width=200px></td>
+<td><img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/University_of_Oxford.svg" width=200px></td>
         </tr>
 </table>
 """
@@ -77,6 +77,68 @@ I work with science teams to help them maximise their usage of Julia.
 4. Ph.D. Computer Science, 2024
    JuliaLab@MIT
 5. RSE/PostDoc in Augsburg & Mainz -- High-Performance Scientific Computing
+"""
+
+# ╔═╡ 22545c98-681e-4517-8238-69eba15f1666
+md"""
+## Motivation 1: Automated parameter calibration for climate simulations
+
+SpeedyWeather's simple sea ice model with 2 parameters
+- freeze rate $f$
+- melt rate $m$
+- plus parameters from air-ocean, air-ice, ocean-ice fluxes, albedo, snow, ...
+
+So we *need* to calibrate them all together!
+
+$(RobustLocalResource("https://github.com/user-attachments/assets/835a10a6-a008-4a7c-944a-35d255ccdd46", "simulation.mp4"))
+
+
+(Zonal velocity (green), sea ice cover (blue-purple), 150km resolution, Nov-April)
+
+Compared to observations 
+
+$(RobustLocalResource("https://github.com/user-attachments/assets/02d5c67e-6573-4d9e-b37f-3bfa77fccd60", "arctic_sea_ice.png"))
+- ❌ Arctic is ice-free in summer
+- ❌ Sea ice reaches Scotland in winter
+"""
+
+# ╔═╡ 04313026-4f5f-4d67-a7de-d60778cc2aaa
+md"""
+
+## Motivation 2: Calibrate ocean mixing from high-resolution simulations
+
+(Credits to Gregory L Wagner)
+
+Oceananigans can use a high-resolution (but local area) version of itself
+to calibrate turbulent kinetic energy for its global simulations
+
+(insert CaTKE figure here)
+
+Possible to do this gradient-free (e.g. Ensemble Kalman Inversion) for
+few parameters but likely needs recalibration in every coupled simulation ... 
+
+
+"""
+
+# ╔═╡ 766aaf4b-89f8-4b0e-b25c-4d656ee61751
+md"""
+
+## Motivation 3: Learning the missing physics 
+
+Add a neural network to learn a correction term to known physics
+(here more certain dynamics vs less certain physics parameterizations)
+
+NeuralGCM (Kochkov et al. 2024) using Python+JAX
+
+$(RobustLocalResource("https://github.com/user-attachments/assets/5d446fac-3e95-433b-93a6-07c0f767ac48", "neural_gcm.png"))
+
+Required a full JAX rewrite and was very expensive to train (weeks on TPU clusters, $500k)
+but allowed to learn missing physics for weather forecasting
+Copilot menu
+
+
+$(RobustLocalResource("https://github.com/user-attachments/assets/38e3930f-04d1-4a4f-8f50-8f1568639d00", "copilot.png"))
+
 """
 
 # ╔═╡ 948940a0-e6ed-4020-b68a-626594de7f09
@@ -2953,6 +3015,9 @@ version = "4.1.0+0"
 # ╠═2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
 # ╟─4753cb46-803b-4c4c-a0ed-9e960238ae1b
+# ╟─22545c98-681e-4517-8238-69eba15f1666
+# ╟─04313026-4f5f-4d67-a7de-d60778cc2aaa
+# ╟─766aaf4b-89f8-4b0e-b25c-4d656ee61751
 # ╟─948940a0-e6ed-4020-b68a-626594de7f09
 # ╟─f502e96f-29e7-46da-8db3-558a949a976d
 # ╟─b4ad3469-39e9-44e9-af81-434e69bd6c02
