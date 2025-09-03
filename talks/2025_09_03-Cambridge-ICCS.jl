@@ -4,6 +4,18 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    #! format: off
+    return quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+    #! format: on
+end
+
 # ╔═╡ 665c5ded-f7ad-4a4c-a295-69f82aab5495
 begin
 	using PlutoUI, PlutoTeachingTools
@@ -59,26 +71,6 @@ Valentin Churavy (1, 2) and Milan Klöwer (3)
 </table>
 """
 
-# ╔═╡ 4753cb46-803b-4c4c-a0ed-9e960238ae1b
-md"""
-## Who am I?
-RSE/PostDoc working on the Julia compiler and runtime for accelerated computing and HPC.
-
-My goal is to make HPC and GPU based programming easier and more accessible.
-
-I work with science teams to help them maximise their usage of Julia.
-
-1. B.Sc. Cognitive Science, 2014
-   University of Osnabrück
-2. Research in applied Machine Learning, 2015-2017
-   Okinawa Institute of Science and Technology, Japan
-3. M.Sc. Computer Science, 2019
-   JuliaLab@MIT
-4. Ph.D. Computer Science, 2024
-   JuliaLab@MIT
-5. RSE/PostDoc in Augsburg & Mainz -- High-Performance Scientific Computing
-"""
-
 # ╔═╡ 22545c98-681e-4517-8238-69eba15f1666
 md"""
 ## Motivation 1: Automated parameter calibration for climate simulations
@@ -107,18 +99,22 @@ md"""
 
 ## Motivation 2: Calibrate ocean mixing from high-resolution simulations
 
-(Credits to Gregory L Wagner)
-
 Oceananigans can use a high-resolution (but local area) version of itself
 to calibrate turbulent kinetic energy for its global simulations
 
-(insert CaTKE figure here)
+LocalResource("./oceananigans_drag_coefficient.png")
+
 
 Possible to do this gradient-free (e.g. Ensemble Kalman Inversion) for
 few parameters but likely needs recalibration in every coupled simulation ... 
 
 
 """
+
+# ╔═╡ b4ad3469-39e9-44e9-af81-434e69bd6c02
+question_box("""
+Given real-world measurments (or even synthetic ones) how do we "learn" the drag coefficent (parameter estimation)?
+""")
 
 # ╔═╡ 766aaf4b-89f8-4b0e-b25c-4d656ee61751
 md"""
@@ -140,21 +136,6 @@ Copilot menu
 $(RobustLocalResource("https://github.com/user-attachments/assets/38e3930f-04d1-4a4f-8f50-8f1568639d00", "copilot.png"))
 
 """
-
-# ╔═╡ 948940a0-e6ed-4020-b68a-626594de7f09
-md"""
-## Parameter estimation
-
-The choice of drag coefficients for the surface of the ocean, has an impact on the depth of the mixing layer. Below we have parameter sweep done using Oceananigans.jl.
-"""
-
-# ╔═╡ f502e96f-29e7-46da-8db3-558a949a976d
-LocalResource("./oceananigans_drag_coefficient.png")
-
-# ╔═╡ b4ad3469-39e9-44e9-af81-434e69bd6c02
-question_box("""
-Given real-world measurments (or even synthetic ones) how do we "learn" the drag coefficent (parameter estimation)?
-""")
 
 # ╔═╡ 177bd814-0795-48fb-8049-ce8d12bf1025
 md"""
@@ -417,10 +398,13 @@ md"""
 ## Symbolic differentiation
 """
 
+# ╔═╡ 80414f8a-af5d-43b9-894d-fc6fa7c27bc0
+@bind k PlutoUI.Slider(1:15, show_value=true, default=8)
+
 # ╔═╡ d194abf2-0e47-4a8d-b7ac-1f5192abdbb2
 begin
 	@variables v_x
-	ex = taylor(v_x, 8)
+	ex = taylor(v_x, k)
 end
 
 # ╔═╡ becd3850-1474-49ad-ba58-a0723ddafe9d
@@ -790,6 +774,20 @@ autodiff(Reverse, G!, Duplicated(out, copy(v)), Duplicated(in, w))
     Necessitating the `copy(v)`
 """
 
+# ╔═╡ e3e0f0b7-478c-41c5-923c-f00c39b0f16f
+md"""
+## Flavors of AD
+- ``\color{purple}{\textbf{Forward-Mode}}``: Perform the shadow computation alongside and in the same order as the instructions in the original program. Propagate the derivative from the inputs to the outputs. Lets you compute the derivative of all outputs with respect to a single input.
+
+- ``\color{blue}{\textbf{Reverse-Mode}}``: Perform the shadow computation in the opposite order as the instructions in the original program. Propagate the derivative from the outputs to the inputs. Lets you compute the derivative of a single output with respect to all inputs.
+
+    - More common in machine learning as it lets you take the gradient with respect to all input weights/biases in a single sweep.
+
+
+$(LocalResource("./fwd_backward.png"))
+
+"""
+
 # ╔═╡ 30bcef0b-abcb-46d4-84e2-820e40d3aa6c
 md"""
 ## Reverse vs Forward mode
@@ -826,24 +824,17 @@ let
 	dx
 end
 
-# ╔═╡ e3e0f0b7-478c-41c5-923c-f00c39b0f16f
-md"""
-## Flavors of AD
-- ``\color{purple}{\textbf{Forward-Mode}}``: Perform the shadow computation alongside and in the same order as the instructions in the original program. Propagate the derivative from the inputs to the outputs. Lets you compute the derivative of all outputs with respect to a single input.
-
-- ``\color{blue}{\textbf{Reverse-Mode}}``: Perform the shadow computation in the opposite order as the instructions in the original program. Propagate the derivative from the outputs to the inputs. Lets you compute the derivative of a single output with respect to all inputs.
-
-    - More common in machine learning as it lets you take the gradient with respect to all input weights/biases in a single sweep.
-
-
-$(LocalResource("./fwd_backward.png"))
-
-"""
-
 # ╔═╡ 5a643f62-e3b1-4670-8d4c-cf0229917e1c
 md"""
 ## Conclusion
-""" |> TODO
+
+1. We need to be able to take gradients through scientific programs
+2. Scientific programs don't neatly fall into the language of machine learning
+
+
+!!! note "Other languages"
+    Enzyme is not limited to just Julia, but can handle other programming languages (C/C++/Rust/Fortran) as well, as long as they are LLVM based.
+"""
 
 # ╔═╡ cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
 md"""
@@ -3014,13 +3005,10 @@ version = "4.1.0+0"
 # ╠═00c1a967-c4e2-44e8-b6f9-85ea65c654be
 # ╠═2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
-# ╟─4753cb46-803b-4c4c-a0ed-9e960238ae1b
 # ╟─22545c98-681e-4517-8238-69eba15f1666
 # ╟─04313026-4f5f-4d67-a7de-d60778cc2aaa
-# ╟─766aaf4b-89f8-4b0e-b25c-4d656ee61751
-# ╟─948940a0-e6ed-4020-b68a-626594de7f09
-# ╟─f502e96f-29e7-46da-8db3-558a949a976d
 # ╟─b4ad3469-39e9-44e9-af81-434e69bd6c02
+# ╟─766aaf4b-89f8-4b0e-b25c-4d656ee61751
 # ╟─177bd814-0795-48fb-8049-ce8d12bf1025
 # ╠═de43f959-683c-44e5-8836-8239a0386997
 # ╠═cac6333c-caa3-4eef-8462-b62d8b802d3d
@@ -3046,6 +3034,7 @@ version = "4.1.0+0"
 # ╟─ba4b4c9b-7b49-4afc-9815-abebb8173611
 # ╟─49b152ce-918c-4fa9-a0c9-94ff78be9d98
 # ╠═9d422306-9c7b-4efd-bd8d-a0b80dcc139a
+# ╟─80414f8a-af5d-43b9-894d-fc6fa7c27bc0
 # ╠═d194abf2-0e47-4a8d-b7ac-1f5192abdbb2
 # ╠═becd3850-1474-49ad-ba58-a0723ddafe9d
 # ╠═691bb998-b0f4-421e-b697-e722e971d280
@@ -3102,6 +3091,7 @@ version = "4.1.0+0"
 # ╠═4e8982fd-e2b5-484c-be89-b94be5225ab7
 # ╠═e33abaac-3843-4dfd-a719-d9feed5ce547
 # ╟─119dc126-b00e-4379-9214-82c8311cfd77
+# ╟─e3e0f0b7-478c-41c5-923c-f00c39b0f16f
 # ╟─30bcef0b-abcb-46d4-84e2-820e40d3aa6c
 # ╠═9e8ff58b-9f5b-4d44-9f5c-8da56ce07408
 # ╠═b59663af-5e25-4cd6-956c-c480801efb4b
@@ -3109,8 +3099,7 @@ version = "4.1.0+0"
 # ╠═771856d1-8166-4a81-a55b-500367c115a6
 # ╠═3b3b143a-c8a7-4ebb-869c-18b1dce3df76
 # ╠═d31661c3-a16e-4b2d-b45d-98368e8fd8d6
-# ╟─e3e0f0b7-478c-41c5-923c-f00c39b0f16f
-# ╠═5a643f62-e3b1-4670-8d4c-cf0229917e1c
+# ╟─5a643f62-e3b1-4670-8d4c-cf0229917e1c
 # ╟─cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
 # ╟─23c423cd-5227-4eec-a1f1-9fb6e209678a
 # ╠═f8c80b48-a9a1-443d-8eaf-b87c7a823830
