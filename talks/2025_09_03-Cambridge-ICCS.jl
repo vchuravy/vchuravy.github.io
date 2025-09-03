@@ -84,8 +84,10 @@ So we *need* to calibrate them all together!
 
 $(RobustLocalResource("https://github.com/user-attachments/assets/835a10a6-a008-4a7c-944a-35d255ccdd46", "simulation.mp4"))
 
-
+ 
 (Zonal velocity (green), sea ice cover (blue-purple), 150km resolution, Nov-April)
+
+##
 
 Compared to observations 
 
@@ -102,7 +104,7 @@ md"""
 Oceananigans can use a high-resolution (but local area) version of itself
 to calibrate turbulent kinetic energy for its global simulations
 
-LocalResource("./oceananigans_drag_coefficient.png")
+$(LocalResource("./oceananigans_drag_coefficient.png"))
 
 
 Possible to do this gradient-free (e.g. Ensemble Kalman Inversion) for
@@ -110,11 +112,6 @@ few parameters but likely needs recalibration in every coupled simulation ...
 
 
 """
-
-# ╔═╡ b4ad3469-39e9-44e9-af81-434e69bd6c02
-question_box("""
-Given real-world measurments (or even synthetic ones) how do we "learn" the drag coefficent (parameter estimation)?
-""")
 
 # ╔═╡ 766aaf4b-89f8-4b0e-b25c-4d656ee61751
 md"""
@@ -128,10 +125,11 @@ NeuralGCM (Kochkov et al. 2024) using Python+JAX
 
 $(RobustLocalResource("https://github.com/user-attachments/assets/5d446fac-3e95-433b-93a6-07c0f767ac48", "neural_gcm.png"))
 
+
+##
+
 Required a full JAX rewrite and was very expensive to train (weeks on TPU clusters, $500k)
 but allowed to learn missing physics for weather forecasting
-Copilot menu
-
 
 $(RobustLocalResource("https://github.com/user-attachments/assets/38e3930f-04d1-4a4f-8f50-8f1568639d00", "copilot.png"))
 
@@ -834,6 +832,8 @@ md"""
 
 !!! note "Other languages"
     Enzyme is not limited to just Julia, but can handle other programming languages (C/C++/Rust/Fortran) as well, as long as they are LLVM based.
+
+$(RobustLocalResource("https://enzyme.mit.edu/all_top.png", "all_top.png"))
 """
 
 # ╔═╡ cbbeeac0-2c1b-43f3-9440-6fcfbf3870fb
@@ -3007,7 +3007,6 @@ version = "4.1.0+0"
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
 # ╟─22545c98-681e-4517-8238-69eba15f1666
 # ╟─04313026-4f5f-4d67-a7de-d60778cc2aaa
-# ╟─b4ad3469-39e9-44e9-af81-434e69bd6c02
 # ╟─766aaf4b-89f8-4b0e-b25c-4d656ee61751
 # ╟─177bd814-0795-48fb-8049-ce8d12bf1025
 # ╠═de43f959-683c-44e5-8836-8239a0386997
