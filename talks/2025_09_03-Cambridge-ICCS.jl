@@ -96,6 +96,29 @@ $(RobustLocalResource("https://github.com/user-attachments/assets/02d5c67e-6573-
 - ❌ Sea ice reaches Scotland in winter
 """
 
+# ╔═╡ c9305fe4-d1a2-4b93-952c-cc71097bdfbf
+md"""
+## What is online learning?
+
+Different terminology used in different fields
+
+!!! note "What is offline learning?"
+    - Neural network learning from data
+
+!!! warning "What is "online" or "hybrid" (climate defintion)?"
+    - Physics simulator time stepping with ML inference
+
+!!! error "What is online (hybrid) learning?"
+    - Training NN embedded in a physics simulator
+    - Gradients are computed through both NN and simulator (differentiable!)
+
+!!! danger "What is online learning (ML definition)?"
+    - Continuous learning, continuously updating NN weights
+    - interweaves inference and training
+
+
+"""
+
 # ╔═╡ 04313026-4f5f-4d67-a7de-d60778cc2aaa
 md"""
 
@@ -3006,6 +3029,7 @@ version = "4.1.0+0"
 # ╠═2f59050b-d630-4a3a-8aa1-3c2e9a70c66f
 # ╟─b0448824-81ea-11f0-3d7a-bd269696aca6
 # ╟─22545c98-681e-4517-8238-69eba15f1666
+# ╟─c9305fe4-d1a2-4b93-952c-cc71097bdfbf
 # ╟─04313026-4f5f-4d67-a7de-d60778cc2aaa
 # ╟─766aaf4b-89f8-4b0e-b25c-4d656ee61751
 # ╟─177bd814-0795-48fb-8049-ce8d12bf1025
