@@ -683,6 +683,57 @@ md"""
   - `CUDA.jl` has it's own inbuilt `@profile`
 """
 
+# ╔═╡ 0737ac5f-c947-44e4-b2f0-009529965f48
+md"""
+## How do Profilers work?
+
+```
+while profiling
+    sleep(t) # wait for sampling interval
+    pause_threads()
+    for t in threads()
+       collect_stacktrace(t)
+       # process
+    end
+end
+```
+"""
+
+# ╔═╡ af00dd69-1637-4aaa-b818-1ec653dee5e3
+md"""
+### Stackframe
+"""
+
+# ╔═╡ 9de7f5d6-697b-44bd-9c7e-775a80a97d74
+Base.stacktrace() # lot's of extra noise from Pluto
+
+# ╔═╡ ef27fdfc-9d17-4ed8-aed8-1fcd9f586518
+md"""
+!!! warn "Count vs time"
+	Profilers count the number of time a call-frame was seen in a stackframe. The flamegraphs we saw above are count based. If you know the **sampling frequency** you can convert it to "time", but it is always a hazardous procedure since the cost of taking a sample can be hight. 
+
+    Profiling will slow down your code.
+
+"""
+
+# ╔═╡ b63778a0-a167-4949-87fa-0cda95192726
+TwoColumn(
+md"""
+**Internal Profiler**
+- Can use language specific stacktrace collection
+  - Often more information
+- May rely on runtime scheduling
+- May have higher overheads
+""",
+md"""
+**External Profiler**
+- Relies on OS-level stacktrace collection (unwinding)
+  - JIT compilers are hard (where does the debuginfo live)
+  - Less information (in Julia simple names instead of detailed methods)
+- Lower-overhead
+- Deeper integration (CPU architecture analysis)
+""")
+
 # ╔═╡ 872cdcd1-78f9-475b-9e4c-3bbe446b1d87
 md"""
 ### Instrumentation
@@ -728,15 +779,38 @@ let
 	to
 end
 
-# ╔═╡ 473fa18f-0b71-4640-93a2-a53a1fb34eff
+# ╔═╡ f68c8205-9d70-449e-979c-6e3898ed9b67
 md"""
-  - Internal vs External
-  - Sampling profiler
-     - "stacktraces"
-     - interpretation flamegraph
-     - "counts" vs "times"
-  - Continous Profiling
-""" |> TODO
+!!! note
+    Instrumentation together with a sampling profiler can be very powerful, since it allows you to focus on regions of interest.
+"""
+
+# ╔═╡ f2d1282f-037d-4f60-b9fe-921839959e52
+md"""
+```julia
+using IntelITT
+
+# warm-up, compile code, etc
+
+IntelITT.resume()
+
+IntelITT.@task "my task" begin
+    # do interesting things here
+end
+
+IntelITT.pause()
+```
+"""
+
+# ╔═╡ 2242d55d-49f9-4e68-bfee-f3b92e2cc4c1
+md"""
+## Continous profiling
+
+The holy grail, needs to have low-overhead / low-performance impact, but provides deep insight into long-running applications like web-servers.
+
+!!! note
+    Traditional profilers struggle when profiling sessions become very long.
+"""
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -2494,12 +2568,19 @@ version = "4.1.0+0"
 # ╟─45dd1a2e-252a-400d-926a-5c2994d6d2fe
 # ╟─acecd1a1-4a70-4355-a87e-aed1d4c63dc6
 # ╟─dd99c12d-7354-4b55-9764-1a5495edea7e
+# ╟─0737ac5f-c947-44e4-b2f0-009529965f48
+# ╟─af00dd69-1637-4aaa-b818-1ec653dee5e3
+# ╠═9de7f5d6-697b-44bd-9c7e-775a80a97d74
+# ╟─ef27fdfc-9d17-4ed8-aed8-1fcd9f586518
+# ╟─b63778a0-a167-4949-87fa-0cda95192726
 # ╟─872cdcd1-78f9-475b-9e4c-3bbe446b1d87
 # ╠═a91206f9-2f69-40dc-9f3d-f099ee2a4826
 # ╠═cc9facb8-d67e-4719-aea9-5f417d011b20
 # ╠═e7309389-4fb5-4633-8705-b3889b7dca72
 # ╠═3df69046-2804-4cb8-8e91-b4433a66cb72
 # ╠═76265fcf-5428-464b-bf6f-dec689d091d6
-# ╠═473fa18f-0b71-4640-93a2-a53a1fb34eff
+# ╟─f68c8205-9d70-449e-979c-6e3898ed9b67
+# ╟─f2d1282f-037d-4f60-b9fe-921839959e52
+# ╟─2242d55d-49f9-4e68-bfee-f3b92e2cc4c1
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
