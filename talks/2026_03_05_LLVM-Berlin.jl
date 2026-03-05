@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.21
+# v0.20.23
 
 using Markdown
 using InteractiveUtils
@@ -53,16 +53,67 @@ Numerical Mathematics, University of Mainz
 </table>
 """
 
-# ╔═╡ 971318b5-0f31-4382-9b53-582e5d04f475
+# ╔═╡ e89d3434-f004-4bb2-91ce-82a1ce1f17ec
 md"""
-## Brief introduction to Julia
+## What's Julia? 🟢 🟣 🔴
+
+Julia is a modern, dynamic, general-purpose, compiled programming language.
+It's interactive ("like Python"), can be used in a REPL or notebooks, like Jupyter (it's the "Ju") or Pluto (this one🎈).
+Julia has a runtime which includes a just-in-time (JIT) compiler and a garbage collector (GC), for automatic memory management.
+
+Julia is mainly used for technical computing, and addresses a gap in the programming language landscape for numerical computing.
+
+
+Main paradigm of Julia is multiple dispatch, what functions do depend on type and number of _all_ arguments.
 """
+
+# ╔═╡ 52498869-1e35-4ade-bff0-22da8285cd4d
+md"""
+!!! note "Why Julia"
+    A high-level dynamical programming language build for technical computing (think scientists and engineers).
+"""
+
+# ╔═╡ 20cef0cd-434a-406c-82ad-4a1636a1ac31
+md"""
+### Mixing high-level and low-level code for scientific programming
+"""
+
+# ╔═╡ da0c3b13-67f5-4f3e-8560-52cb4905ac92
+TwoColumn(
+md"""
+**High-Level**
+```julia
+A = rand(64, 64)
+B = Diagonal(ones(64))
+C = similar(A)
+C .= A .+ B
+
+# Or
+C = A .+ B
+```
+""",
+md"""
+**Low-Level**
+```julia
+function matadd!(C, A, B)
+  size(C) == size(A) == size(B) || 
+	throw(DimensionMismatch())
+  m,n = size(A)
+  @inbounds for j = 1:n
+    @simd for i = 1:m
+       C[i,j] = A[i,j] + B[i,j]
+    end
+  end
+  return C
+end
+```
+""")
 
 # ╔═╡ 3f077865-1cf3-4f77-a350-7d8073032be9
 md"""
-!!! note
+!!! note "Compilation"
 	Julia is a high-level dynamic programming language that use JIT compilation with LLVM as a primary execution strategy
-""" |> TODO
+"""
 
 # ╔═╡ 9d4e03d0-1c8c-4980-a5e3-14d7ec3cfe18
 md"""
@@ -107,13 +158,25 @@ md"""
     **Interpretation** vs **Compilation** is an implementation choice not part of the language **semantics**.
 """
 
-# ╔═╡ 99cdc76b-d18c-476e-b94b-cda8939da526
+# ╔═╡ b42252af-f2ca-4777-850a-d58729b5ff5b
 md"""
-### What makes a programming language dynamic?
+## What makes a language dynamic?
 
-1. Dynamic typing vs static typing
-2. Open world vs closed world
-3. Dynamic structs vs dynamic
+- Commonly: Referring to the type system.
+  - **Static**: Types are checked before run-time.
+  - **Dynamic**: Types are checkd on the fly, during execution
+  - Often: The type of a **variable** can change during execution.
+
+- More interestingly: Closed-world vs open-world semantics
+  - Can code be added during runtime?
+  - Litmus test: The presence of **eval**
+
+- Struct layout:
+  - Can one change the fields of a object/class/struct at runtime?
+
+Dynamic semantics are a **spectrum**
+
+Julia has a dynamic type system, open-world semantics, but struct layout is static.
 """
 
 # ╔═╡ 7491f903-8b1d-46fc-a209-ddb8b72f1e6e
@@ -123,8 +186,10 @@ md"""
 
 # ╔═╡ 2c22c47f-fec0-497c-82f6-c3e3191b9234
 md"""
-
-""" |> TODO
+1. Multiple-dispatch can lead to a cartesian explosion of methods to compile
+2. Julia is a LISP, and uses metaprogramming, the set of functions and methods is only known by running code ("define-by-run").
+3. Caching... Caching... Caching...
+"""
 
 # ╔═╡ 9dc0f447-9b71-4507-9cc2-36bd5a872a7f
 md"""
@@ -134,11 +199,21 @@ md"""
 # ╔═╡ 5413f7e7-60bb-4ab1-92ca-1a8618c392d2
 md"""
 1. Parsing
-2. Linearization
-3. Abstract-interpretation based type-inference
+2. Lowering & Linearization
+3. Abstract interpretation based type-inference
 4. High-level optimizations
-5. LLVM based optimizations
-6. Emission of native code
+5. Codegen to LLVM IR
+6. LLVM middle-end
+7. LLVM backend
+8. Native code
+"""
+
+# ╔═╡ b0713138-4769-45d9-a02e-5f35dfd536fb
+md"""
+!!! warning "Compilation strategy"
+    Julia compiles a "function dispatch" at a time. When you use `f(a, b)` it looks at the types of `a` and `b`, and selects the most applicable (dispatch) method of the function `f` (multiple-dispatch/multi-functions). 
+
+     From there it runs "type-inference" and infers the call-graph reachable from `f`. It then performs high-level optimization over the "local" call-graph, and the compiles a method at a time (for better caching) with LLVM.
 """
 
 # ╔═╡ 7071ccce-f164-4e9f-a344-433da4f5ced1
@@ -189,7 +264,7 @@ example(ones(10))
 
 # ╔═╡ 27777746-1ae6-479c-8589-8adb1db62abc
 md"""
-## Linearization
+## Lowering & Linearization
 """
 
 # ╔═╡ f21e2205-f4ba-4f70-9dd3-59921a4901ad
@@ -441,6 +516,26 @@ High-level optimizations:
 - (Future) Interprocedural Escape Analyis
 - (Future) Alias analysis
 - (Future) Loop based optimizations such as loop invariant code motion (LICM)
+
+!!! note
+    These optimizations are implemented in Julia, inside the Julia compiler itself, while we still have whole-subprogram visibility.
+"""
+
+# ╔═╡ 9a29918f-af90-47d7-a446-0d5d9266e32c
+code_typed() do
+	sin(3.0) + 4.0
+end |> only
+
+# ╔═╡ 4064ccce-ae7e-4beb-b285-0ea5b8dd34d7
+md"""
+!!! note
+    Julia performs constant propagation/concrete evaluation on the level of type-inference. 
+    Having an "interpreter" in you compiler is really powerful.
+"""
+
+# ╔═╡ 53b768ca-c7b1-4e17-8dfd-b8050ba99721
+md"""
+### Inlining
 """
 
 # ╔═╡ 35b6654b-205a-4f2b-996c-a10ea2225734
@@ -479,7 +574,9 @@ md"""
 """
 
 # ╔═╡ c7589717-dfbd-410a-a15b-46e9c4cd1f86
-@code_llvm optimize=false debuginfo=:none mysum(rand(30))
+with_terminal() do
+	@code_llvm optimize=false debuginfo=:none mysum(rand(30))
+end
 
 # ╔═╡ 8f2c9c96-333a-4a56-b78f-7b57503aa95e
 md"""
@@ -579,6 +676,9 @@ The stages of the compiler
 - `@code_native`
 
 Where is a function defined `@which` & `@edit`
+
+!!! note
+    Compiler explorer in your REPL.
 """
 
 # ╔═╡ 6f7f3602-934d-4919-aa30-c75b53eff1d1
@@ -588,11 +688,6 @@ md"""
 !!! note
     Julia uses the LLVM C-API to provide functionality like compiling Julia to GPUs.
 """
-
-# ╔═╡ d26abf38-9252-4c1b-b039-4ea1bc742a97
-md"""
-
-""" |> TODO
 
 # ╔═╡ aaca3a86-f0ff-4596-9915-501e890b3312
 @dispose ctx=Context() begin
@@ -645,7 +740,7 @@ ShortCodes = "~0.3.6"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.8"
+julia_version = "1.11.9"
 manifest_format = "2.0"
 project_hash = "8af75de82b4c2d73a0bcbc870b682c0f088d9bf1"
 
@@ -1148,8 +1243,11 @@ version = "17.4.0+2"
 # ╟─8f41ec72-b8f7-4a9a-89d7-553087f1438e
 # ╠═f8f45c14-163e-11f1-15f3-a3fb91cabf98
 # ╟─392bf0a6-d794-482e-a396-7c7e67cefd29
-# ╠═971318b5-0f31-4382-9b53-582e5d04f475
-# ╠═3f077865-1cf3-4f77-a350-7d8073032be9
+# ╟─e89d3434-f004-4bb2-91ce-82a1ce1f17ec
+# ╟─52498869-1e35-4ade-bff0-22da8285cd4d
+# ╟─20cef0cd-434a-406c-82ad-4a1636a1ac31
+# ╟─da0c3b13-67f5-4f3e-8560-52cb4905ac92
+# ╟─3f077865-1cf3-4f77-a350-7d8073032be9
 # ╟─9d4e03d0-1c8c-4980-a5e3-14d7ec3cfe18
 # ╟─650f98c2-b600-4616-9b47-08863b73c3a7
 # ╟─c09a5ab6-9928-477c-8bed-856dcb44634a
@@ -1157,11 +1255,12 @@ version = "17.4.0+2"
 # ╟─01db0eb8-4912-4c6a-8a42-5769b08760ff
 # ╟─ae80d474-d64e-47d9-af14-eedaf861c36e
 # ╟─125b15b0-52ad-48a1-bec5-8f335debbccb
-# ╟─99cdc76b-d18c-476e-b94b-cda8939da526
+# ╟─b42252af-f2ca-4777-850a-d58729b5ff5b
 # ╟─7491f903-8b1d-46fc-a209-ddb8b72f1e6e
 # ╟─2c22c47f-fec0-497c-82f6-c3e3191b9234
 # ╟─9dc0f447-9b71-4507-9cc2-36bd5a872a7f
 # ╟─5413f7e7-60bb-4ab1-92ca-1a8618c392d2
+# ╟─b0713138-4769-45d9-a02e-5f35dfd536fb
 # ╠═7071ccce-f164-4e9f-a344-433da4f5ced1
 # ╟─639fbab4-e36f-4b72-a2df-dea7cd308abf
 # ╟─6af145a0-f177-414a-8c9b-02072fcedbf0
@@ -1196,23 +1295,25 @@ version = "17.4.0+2"
 # ╟─f61ffd4a-a612-448c-a60b-1d8fc9352e35
 # ╟─7ea481a3-d86f-43e8-9773-0a0f4bdf9646
 # ╟─74d99c11-0605-4de4-b1f4-dc3bc5628d9a
+# ╠═9a29918f-af90-47d7-a446-0d5d9266e32c
+# ╟─4064ccce-ae7e-4beb-b285-0ea5b8dd34d7
+# ╟─53b768ca-c7b1-4e17-8dfd-b8050ba99721
 # ╠═35b6654b-205a-4f2b-996c-a10ea2225734
 # ╠═079f6093-fa0c-43e0-87e7-48df8ff221b5
-# ╠═5a31774e-3748-46ad-921d-1b14f81bdc31
+# ╟─5a31774e-3748-46ad-921d-1b14f81bdc31
 # ╠═da269326-5d9d-44e1-b261-598c5aa6f5ba
 # ╟─decb653a-9810-4ed5-aa34-5cf7a21e7f11
-# ╠═a6ad35fd-eb88-4dc6-84b3-75e77e71eb99
+# ╟─a6ad35fd-eb88-4dc6-84b3-75e77e71eb99
 # ╠═c7589717-dfbd-410a-a15b-46e9c4cd1f86
-# ╠═8f2c9c96-333a-4a56-b78f-7b57503aa95e
-# ╠═87a7d0b4-7a7b-4713-91ad-28347ccf2e9a
-# ╠═c442e8a7-9076-40c1-83f3-84d7a4ca00c3
-# ╠═f0c57ad2-8778-4316-bc7d-680296967d07
-# ╠═b9de447e-e3df-4ce3-a9cd-2ef43a0407e4
-# ╠═e48e423f-4ba0-4492-82c1-032e5836571a
-# ╠═dd92da88-f953-458f-9cd9-7e2ae727dcf1
+# ╟─8f2c9c96-333a-4a56-b78f-7b57503aa95e
+# ╟─87a7d0b4-7a7b-4713-91ad-28347ccf2e9a
+# ╟─c442e8a7-9076-40c1-83f3-84d7a4ca00c3
+# ╟─f0c57ad2-8778-4316-bc7d-680296967d07
+# ╟─b9de447e-e3df-4ce3-a9cd-2ef43a0407e4
+# ╟─e48e423f-4ba0-4492-82c1-032e5836571a
+# ╟─dd92da88-f953-458f-9cd9-7e2ae727dcf1
 # ╟─6f7f3602-934d-4919-aa30-c75b53eff1d1
 # ╠═b15a2ba0-498d-4dec-a556-a4d147bc8ebe
-# ╠═d26abf38-9252-4c1b-b039-4ea1bc742a97
 # ╠═aaca3a86-f0ff-4596-9915-501e890b3312
 # ╠═21c21476-3189-40cd-a744-4bb3b253b812
 # ╠═80882caa-59c6-4518-8c44-958b90e5f13a
