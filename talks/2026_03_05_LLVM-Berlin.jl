@@ -1,6 +1,16 @@
 ### A Pluto.jl notebook ###
 # v0.20.23
 
+#> [frontmatter]
+#> title = "A random walk through Julia's compiler"
+#> date = "2026-03-05"
+#> license = "MIT"
+#> description = "LLVM user meeting Berlin"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
