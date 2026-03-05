@@ -33,6 +33,9 @@ begin
 	using LLVM.Interop
 end
 
+# ╔═╡ 66c19ed7-dbfd-4475-a0cb-73c41122e713
+using Enzyme
+
 # ╔═╡ 5d04d08a-6cd4-4247-bc1a-04a2b568bbc3
 html"<button onclick='present()'>Toggle presentation mode</button>"
 
@@ -657,24 +660,6 @@ Julia also uses edges to limit the invalidation effect. Methods and compile resu
     On disk caches must be carefully validated as well.
 """
 
-# ╔═╡ e48e423f-4ba0-4492-82c1-032e5836571a
-md"""
-## So why bother?
-
-- The usability improvement of dynamic programming language is not to undervalue
-  - Python, JavaScript and co are very popular for accessibility reasons
-- Dynamic Programming Languages often have a higher level of abstractions
-  - When I work on hard science, I don't want to worry about memory lifetimes
-- Dynamic programming languages can be fast
-  - The presenence of a JIT allows for value specializationn
-  - We can start dynamic and regain information at call-boundaries
-
-!!! note
-    Julia is a fast, high-level dynamic programming language.
-    It's not magic, but rather clever language design.
-
-"""
-
 # ╔═╡ dd92da88-f953-458f-9cd9-7e2ae727dcf1
 md"""
 ## Figuring out what is happening
@@ -727,9 +712,165 @@ with_terminal() do
 	@code_llvm call_sum(Int32(1), Int32(2))
 end
 
+# ╔═╡ a26bb276-1676-4322-9a2f-3f8663790f14
+md"""
+### Writing an LLVM pass in Julia
+"""
+
+# ╔═╡ ec2fcc61-e589-4750-b704-a35c615d9bba
+function example_module_pass!(mod)
+	changed = false
+
+	for f in functions(mod)
+		@show f
+	end
+	
+	return changed
+end
+
+# ╔═╡ 6d35c70e-c918-484e-b20e-b79b6d8ac444
+ExampleModulePass() = NewPMModulePass("example_module_pass", example_module_pass!);
+
+# ╔═╡ a8d5aa57-9567-44f3-a62c-c7ddefd2cbd7
+ll = """
+define i32 @julia_call_sum_21819(i32 signext %"x::Int32", i32 signext %"y::Int32") {
+top:
+   %tmp.i = add i32 %"y::Int32", %"x::Int32"
+   ret i32 %tmp.i
+}
+""";
+
+# ╔═╡ 9346a034-6703-41fb-95a0-266461dd613b
+@dispose ctx=Context() begin
+	mod = LLVM.parse(LLVM.Module, ll)
+
+	@dispose pb = LLVM.NewPMPassBuilder() begin
+		register!(pb, ExampleModulePass())
+		add!(pb, ExampleModulePass())
+		
+		LLVM.run!(pb, mod)
+	end
+	
+    nothing
+end
+
+# ╔═╡ b995cf6b-3034-4f64-97fc-8665236efdd2
+md"""
+## Getting information out of the darn compiler
+"""
+
+# ╔═╡ 0d9bc6fb-05e0-4285-abfd-76ded3ef6120
+md"""
+!!! note
+    We already saw some high-level reflection methods, but those are trying to be "useful" by default.
+"""
+
+# ╔═╡ 04b57b59-a17f-4b47-855b-726dfb6e1ad9
+with_terminal() do
+	@code_llvm +(1, 1)
+end
+
+# ╔═╡ 98a7b21d-3305-4f53-bb3a-4b3315cbc251
+md"""
+!!! note
+    Before optimizations!
+"""
+
+# ╔═╡ 23718e8c-432c-4dda-b1a8-1d03526de6a7
+with_terminal() do
+	@code_llvm optimize=false +(1, 1)
+end
+
+# ╔═╡ f9d3a2b3-5d66-4387-a878-efad66f57cc0
+md"""
+!!! note
+    Where is my module!
+"""
+
+# ╔═╡ dd1968c0-56d4-40bd-a4a0-1c5a16669503
+with_terminal() do
+	@code_llvm dump_module=true +(1, 1)
+end
+
+# ╔═╡ 69e07dc3-90e9-4cf0-9170-c793a2eeba9b
+md"""
+!!! note
+    But where is my metadata!?
+"""
+
+# ╔═╡ dede4283-ef1f-406a-8512-fa2052e60332
+with_terminal() do
+	@code_llvm dump_module=true raw=true +(1, 1)
+end
+
+# ╔═╡ b7bcbae8-3cee-48e2-80bf-5ee240af8eea
+md"""
+## Retargeting to GPUs & Synthesizing gradients
+"""
+
+# ╔═╡ b7febfcc-1eff-4d53-96fb-26338c6586c9
+md"""
+!!! note
+    In my abstract I promised to talk about how Julia targets GPUs and how we are synthesizing gradients... That is sadly another hour of a talk.
+"""
+
+# ╔═╡ 13a78c25-0f71-4d62-ae2c-dd07fa379912
+md"""
+!!! warning "GPUs"
+	[GPUCompiler.jl](https://github.com/JuliaGPU/GPUCompiler.jl): Takes native Julia code and compiles it directly to GPUs
+
+    [https://vchuravy.dev/talks/2025\_02\_24-EVERSE/](https://vchuravy.dev/talks/2025_02_24-EVERSE/)
+"""
+
+# ╔═╡ 7f312c35-f3a4-49f0-9a6b-cbc94a6ed056
+g(x) = log(x^2 + exp(sin(x)))
+
+# ╔═╡ 89dd61ea-00cb-4ceb-b379-0b081dfa6969
+with_terminal() do
+	@code_llvm debuginfo=:none g(2.0)
+end
+
+# ╔═╡ 9d60c913-5dea-4156-a5e2-9347205f1869
+with_terminal() do
+	Enzyme.Compiler.enzyme_code_llvm(
+		g, Duplicated, Tuple{Duplicated{Float64}},
+		mode=Enzyme.API.DEM_ForwardMode,
+		debuginfo=:none
+	)
+end
+
+# ╔═╡ 87edec2c-447d-4e9d-a200-2a82528f7e54
+md"""
+!!! warning "More about Enzyme"
+    [https://vchuravy.dev/talks/2025\_11\_13-NPS/](https://vchuravy.dev/talks/2025_11_13-NPS/)
+"""
+
+# ╔═╡ e48e423f-4ba0-4492-82c1-032e5836571a
+md"""
+## So why bother?
+
+- The usability improvement of dynamic programming language is not to undervalue
+  - Python, JavaScript and co are very popular for accessibility reasons
+- Dynamic Programming Languages often have a higher level of abstractions
+  - When I work on hard science, I don't want to worry about memory lifetimes
+- Dynamic programming languages can be fast
+  - The presenence of a JIT allows for value specializationn
+  - We can start dynamic and regain information at call-boundaries
+
+!!! note
+    Julia is a fast, high-level dynamic programming language.
+    It's not magic, but rather clever language design.
+
+!!! warning "Collaboration"
+    If this talk resonates and you are curious, I have lots of ideas and little time for how to make LLVM and Julia work better together.
+    - OrcJIT and WASM?
+    - Actually useful remarks for heavily inlined code
+"""
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 IRViz = "fe03f759-463e-4126-a68f-1df7fb7a8375"
 JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
@@ -738,6 +879,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 ShortCodes = "f62ebe17-55c5-4640-972f-b59c0dd11ccf"
 
 [compat]
+Enzyme = "~0.13.129"
 IRViz = "~1.0.0"
 JuliaSyntax = "~1.0.2"
 LLVM = "~9.4.6"
@@ -752,7 +894,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.9"
 manifest_format = "2.0"
-project_hash = "8af75de82b4c2d73a0bcbc870b682c0f088d9bf1"
+project_hash = "aa740f364a59749a47dac522c52459765c56edfd"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -826,11 +968,58 @@ deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
+[[deps.Enzyme]]
+deps = ["CEnum", "EnzymeCore", "Enzyme_jll", "GPUCompiler", "InteractiveUtils", "LLVM", "Libdl", "LinearAlgebra", "ObjectFile", "PrecompileTools", "Preferences", "Printf", "Random", "SparseArrays"]
+git-tree-sha1 = "ea65d3121f09b5f31102542db9445163b7c99182"
+uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+version = "0.13.129"
+
+    [deps.Enzyme.extensions]
+    EnzymeBFloat16sExt = "BFloat16s"
+    EnzymeChainRulesCoreExt = "ChainRulesCore"
+    EnzymeGPUArraysCoreExt = "GPUArraysCore"
+    EnzymeLogExpFunctionsExt = "LogExpFunctions"
+    EnzymeSpecialFunctionsExt = "SpecialFunctions"
+    EnzymeStaticArraysExt = "StaticArrays"
+
+    [deps.Enzyme.weakdeps]
+    ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+    BFloat16s = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+    GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
+    LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
+    SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+    StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[[deps.EnzymeCore]]
+git-tree-sha1 = "990991b8aa76d17693a98e3a915ac7aa49f08d1a"
+uuid = "f151be2c-9106-41f4-ab19-57ee4f262869"
+version = "0.8.18"
+
+    [deps.EnzymeCore.extensions]
+    AdaptExt = "Adapt"
+    EnzymeCoreChainRulesCoreExt = "ChainRulesCore"
+
+    [deps.EnzymeCore.weakdeps]
+    Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+
+[[deps.Enzyme_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
+git-tree-sha1 = "fea21cfc452db42e3878aab62a76896e76d54d12"
+uuid = "7cc45869-7501-5eee-bdea-0790c847d4ef"
+version = "0.0.249+0"
+
 [[deps.ExceptionUnwrapping]]
 deps = ["Test"]
 git-tree-sha1 = "d36f682e590a83d63d1c7dbd287573764682d12a"
 uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
 version = "0.1.11"
+
+[[deps.ExprTools]]
+git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.10"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -846,6 +1035,12 @@ version = "0.8.5"
 git-tree-sha1 = "9c68794ef81b08086aeb32eeaf33531668d5f5fc"
 uuid = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
 version = "1.3.7"
+
+[[deps.GPUCompiler]]
+deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "PrecompileTools", "Preferences", "Scratch", "Serialization", "TOML", "Tracy", "UUIDs"]
+git-tree-sha1 = "966946d226e8b676ca6409454718accb18c34c54"
+uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "1.8.2"
 
 [[deps.Ghostscript_jll]]
 deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Zlib_jll"]
@@ -1000,6 +1195,12 @@ deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 version = "1.11.0+1"
 
+[[deps.LibTracyClient_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "d4e20500d210247322901841d4eafc7a0c52642d"
+uuid = "ad6e5548-8b26-5c9f-8ef3-ef0ad883f3a5"
+version = "0.13.1+0"
+
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 version = "1.11.0"
@@ -1062,6 +1263,12 @@ version = "2023.12.12"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
+
+[[deps.ObjectFile]]
+deps = ["Reexport", "StructIO"]
+git-tree-sha1 = "22faba70c22d2f03e60fbc61da99c4ebfc3eb9ba"
+uuid = "d8793406-e978-5875-9003-1fc021f44a92"
+version = "0.5.0"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
@@ -1151,6 +1358,12 @@ version = "1.3.1"
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
 
+[[deps.Scratch]]
+deps = ["Dates"]
+git-tree-sha1 = "9b81b8393e50b7d4e6d0a9f14e192294d3b7c109"
+uuid = "6c6a2e73-6563-6170-7368-637461726353"
+version = "1.3.0"
+
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
@@ -1170,23 +1383,36 @@ version = "1.2.0"
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 version = "1.11.0"
 
+[[deps.SparseArrays]]
+deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.11.0"
+
 [[deps.Statistics]]
 deps = ["LinearAlgebra"]
 git-tree-sha1 = "ae3bb1eb3bba077cd276bc5cfc337cc65c3075c0"
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 version = "1.11.1"
+weakdeps = ["SparseArrays"]
 
     [deps.Statistics.extensions]
     SparseArraysExt = ["SparseArrays"]
 
-    [deps.Statistics.weakdeps]
-    SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+[[deps.StructIO]]
+git-tree-sha1 = "c581be48ae1cbf83e899b14c07a807e1787512cc"
+uuid = "53d494c1-5632-5724-8f4c-31dff12d585f"
+version = "0.3.1"
 
 [[deps.StructTypes]]
 deps = ["Dates", "UUIDs"]
 git-tree-sha1 = "159331b30e94d7b11379037feeb9b690950cace8"
 uuid = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 version = "1.11.0"
+
+[[deps.SuiteSparse_jll]]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
+uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
+version = "7.7.0+0"
 
 [[deps.TOML]]
 deps = ["Dates"]
@@ -1202,6 +1428,18 @@ version = "1.10.0"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 version = "1.11.0"
+
+[[deps.Tracy]]
+deps = ["ExprTools", "LibTracyClient_jll", "Libdl"]
+git-tree-sha1 = "73e3ff50fd3990874c59fef0f35d10644a1487bc"
+uuid = "e689c965-62c8-4b79-b2c5-8359227902fd"
+version = "0.1.6"
+
+    [deps.Tracy.extensions]
+    TracyProfilerExt = "TracyProfiler_jll"
+
+    [deps.Tracy.weakdeps]
+    TracyProfiler_jll = "0c351ed6-8a68-550e-8b79-de6f926da83c"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
@@ -1320,12 +1558,34 @@ version = "17.4.0+2"
 # ╟─c442e8a7-9076-40c1-83f3-84d7a4ca00c3
 # ╟─f0c57ad2-8778-4316-bc7d-680296967d07
 # ╟─b9de447e-e3df-4ce3-a9cd-2ef43a0407e4
-# ╟─e48e423f-4ba0-4492-82c1-032e5836571a
 # ╟─dd92da88-f953-458f-9cd9-7e2ae727dcf1
 # ╟─6f7f3602-934d-4919-aa30-c75b53eff1d1
 # ╠═b15a2ba0-498d-4dec-a556-a4d147bc8ebe
 # ╠═aaca3a86-f0ff-4596-9915-501e890b3312
 # ╠═21c21476-3189-40cd-a744-4bb3b253b812
 # ╠═80882caa-59c6-4518-8c44-958b90e5f13a
+# ╟─a26bb276-1676-4322-9a2f-3f8663790f14
+# ╠═ec2fcc61-e589-4750-b704-a35c615d9bba
+# ╠═6d35c70e-c918-484e-b20e-b79b6d8ac444
+# ╠═a8d5aa57-9567-44f3-a62c-c7ddefd2cbd7
+# ╠═9346a034-6703-41fb-95a0-266461dd613b
+# ╟─b995cf6b-3034-4f64-97fc-8665236efdd2
+# ╟─0d9bc6fb-05e0-4285-abfd-76ded3ef6120
+# ╠═04b57b59-a17f-4b47-855b-726dfb6e1ad9
+# ╟─98a7b21d-3305-4f53-bb3a-4b3315cbc251
+# ╠═23718e8c-432c-4dda-b1a8-1d03526de6a7
+# ╟─f9d3a2b3-5d66-4387-a878-efad66f57cc0
+# ╠═dd1968c0-56d4-40bd-a4a0-1c5a16669503
+# ╟─69e07dc3-90e9-4cf0-9170-c793a2eeba9b
+# ╠═dede4283-ef1f-406a-8512-fa2052e60332
+# ╟─b7bcbae8-3cee-48e2-80bf-5ee240af8eea
+# ╟─b7febfcc-1eff-4d53-96fb-26338c6586c9
+# ╟─13a78c25-0f71-4d62-ae2c-dd07fa379912
+# ╠═66c19ed7-dbfd-4475-a0cb-73c41122e713
+# ╠═7f312c35-f3a4-49f0-9a6b-cbc94a6ed056
+# ╠═89dd61ea-00cb-4ceb-b379-0b081dfa6969
+# ╠═9d60c913-5dea-4156-a5e2-9347205f1869
+# ╟─87edec2c-447d-4e9d-a200-2a82528f7e54
+# ╟─e48e423f-4ba0-4492-82c1-032e5836571a
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
