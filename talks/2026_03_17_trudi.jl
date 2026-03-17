@@ -2,13 +2,10 @@
 # v0.20.24
 
 #> [frontmatter]
-#> chapter = "1"
-#> section = "3"
-#> order = "3"
-#> title = "Performance Engineering"
-#> date = "2025-04-30"
+#> title = "Performance Analysis with Julia for Trixi.jl "
+#> date = "2026-03-17"
 #> tags = ["module1", "track_performance"]
-#> layout = "layout.jlhtml"
+#> License = "MIT"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"
@@ -109,24 +106,6 @@ Numerical Mathematics, University of Mainz
         </tr>
 </table>
 """
-
-# ╔═╡ 53274dc8-77ac-43df-bee8-05bc9823b41c
-md"""
-- Performance analysis: Goal roofline?
-- GPU example?
-- Vectorizer?
-- Provide a roadmap
-  - profiler
-  - benchmark
-  - how to improve performance
-- Why is Julia 1.10 faster than later versions
-  - Can we mitigate it
-- How do I write GPU friendly code
-  - memory layouts
-- Why should I not use Julia
-- What causes allocations
-- Should we care about GPU
-""" |> TODO
 
 # ╔═╡ 5c4c21e4-1a90-11f0-2f05-47d877772576
 md"""
@@ -481,6 +460,21 @@ md"""
 		  callback = CallbackSet(stepsize_callback))
 end
 
+# ╔═╡ 801a3777-6bd0-439a-977a-5ded24b68825
+PProf.refresh()
+
+# ╔═╡ 2897d2e7-58d8-42ce-b0cd-22c206b94e25
+ html"""
+<embed type="text/html" src="http://localhost:57599" width="800" height="400"> 
+"""
+
+# ╔═╡ ea252115-6131-4cf5-ad03-dc8bfea1c392
+md"""
+!!! note "Sharing profiles"
+    - [flamegraph.com](https://flamegraph.com)
+    - [pprof.me](https://pprof.me)
+"""
+
 # ╔═╡ fa5243df-79a9-4e36-a14a-18d20babbd08
 md"""
 ### Native profilers
@@ -571,18 +565,24 @@ md"""
     Linux-only, command line only top. Supported by GUI application with `hotspot`
 """
 
+# ╔═╡ d39720df-ab2e-440e-861b-be0b09859477
+md"""
+!!! warning
+    Local example
+"""
+
 # ╔═╡ 6a3f8b13-990a-48ba-8bb5-1132b819c0fa
 md"""
 ```sh
-ENABLE_JITPROFILING=1 perf record --call-graph dwarf -k 1 /home/vchuravy/.julia/juliaup/julia-1.11.6+0.x64.linux.gnu/bin/julia --threads=2 --project=. bench.jl
+ENABLE_JITPROFILING=1 perf record --call-graph dwarf -k 1 /home/vchuravy/.julia/juliaup/julia-1.11.9+0.x64.linux.gnu/bin/julia --threads=auto --project=. profile.jl
 ```
 
 ```sh
-perf inject --jit --input perf.data --output perf.jit.data --verbose
+perf inject --jit --input perf.data --output perf.jit.data
 ```
 
 ```
-perf report
+perf report -i perf.jit.data
 ```
 """
 
@@ -618,6 +618,12 @@ N_FLOPs = first(events[perf_group])["RETIRED_SSE_AVX_FLOPS_ALL"]
 # ╔═╡ 85978b71-25df-4aa1-93d1-4a236b6f2110
 N_FLOPs_per_iteration = N_FLOPs / N
 
+# ╔═╡ 3db655ff-4d88-4165-a8ec-e49141bd6d7e
+md"""
+!!! note "Exercise"
+	[Interactive performance tuning with Julia](https://vchuravy.dev/rse-course/mod3_parallelism/interactive_tuning/)
+"""
+
 # ╔═╡ b5231b36-ac16-4451-aba8-bb31652e903e
 md"""
 ## Aside: LLVM & Vectorizer
@@ -627,6 +633,13 @@ md"""
 md"""
 !!! note "LLVM remarks"
     `JULIA_LLVM_ARGS="--pass-remarks-analysis=loop-vectorize"`
+"""
+
+# ╔═╡ a08e1c6f-14d4-4d50-ad4f-9682e0780af8
+md"""
+!!! warning "More information on the Julia Compiler"
+    - [RSE Course: Compilers](https://vchuravy.dev/rse-course/mod5_performance_engineering/compilers/)
+    - [A random walk through Julia's compiler ](https://vchuravy.dev/talks/2026_03_05_LLVM-Berlin/)
 """
 
 # ╔═╡ 37ee5ec0-7264-49de-96ac-948fbafbf0e1
@@ -668,12 +681,12 @@ macro vtune(expr)
 		end
 		v = Serialization.deserialize($control_io_path)
 		rm($control_io_path)
-		let
-			path = $path
-			script = $script
-			cmd = `$(VTUNE) --user-data-dir=$path -q -report hotspots`
-			run(cmd)
-		end
+		# let
+		# 	path = $path
+		# 	script = $script
+		# 	cmd = `$(VTUNE) --user-data-dir=$path -q -report hotspots`
+		# 	run(cmd)
+		# end
 		v
 	end
 end
@@ -693,6 +706,12 @@ end
 with_terminal() do
 	@code_llvm debuginfo=:none axpy!(Z, A, X, Y)
 end
+
+# ╔═╡ 1a6d3e16-753f-47b5-9e05-6405dfd6dfa0
+md"""
+!!! warning
+    Local example
+"""
 
 # ╔═╡ 49fb6e38-b545-466f-aa84-fcf41e3c1607
 md"""
@@ -714,6 +733,9 @@ It can be hard to correlate profiles with our programs, instrumentation makes it
 - [NVTX](https://github.com/JuliaGPU/NVTX.jl)
 - [Tracy](https://github.com/topolarity/Tracy.jl)
 - [IntelITT.jl](https://github.com/JuliaPerf/IntelITT.j)
+
+!!! warning "Open question"
+    How to I integrate all these different instrumentation choices into one that I can use across multiple profilers.
 
 """
 
@@ -4023,7 +4045,6 @@ version = "4.1.0+0"
 # ╟─820eef38-86d2-4b03-8989-0dc4d4c86929
 # ╟─2aeda4bd-aa1c-46fc-8183-79f8c75e5172
 # ╟─97f862e8-268b-4bff-8bdc-842aecffc2f1
-# ╠═53274dc8-77ac-43df-bee8-05bc9823b41c
 # ╟─5c4c21e4-1a90-11f0-2f05-47d877772576
 # ╟─f3108f38-2bb4-4af7-b864-1805bb3cbef5
 # ╟─f11fb041-4587-4dc2-b201-5a5b27a32dff
@@ -4086,6 +4107,9 @@ version = "4.1.0+0"
 # ╟─d732846e-8c4d-4243-b886-4dde461da524
 # ╠═203a1ab2-caaa-4530-8b30-fc4d522019b1
 # ╠═1709a94e-5bc6-4c57-ae03-e48b14ef7c5a
+# ╠═801a3777-6bd0-439a-977a-5ded24b68825
+# ╟─2897d2e7-58d8-42ce-b0cd-22c206b94e25
+# ╟─ea252115-6131-4cf5-ad03-dc8bfea1c392
 # ╟─fa5243df-79a9-4e36-a14a-18d20babbd08
 # ╟─faf4b6b2-e191-4af1-9527-c8cb3e9f6e71
 # ╟─898ad034-31b8-4ef5-a58e-06757a6d34cb
@@ -4105,6 +4129,7 @@ version = "4.1.0+0"
 # ╠═29384daa-5276-4a2d-81d5-578749335a75
 # ╟─6182daf1-5332-4b68-a9a5-1ae0c9a39882
 # ╟─50499b7e-4ff9-4279-ab02-214e857c3d55
+# ╟─d39720df-ab2e-440e-861b-be0b09859477
 # ╟─6a3f8b13-990a-48ba-8bb5-1132b819c0fa
 # ╟─b10de1e6-653c-4c12-b7d5-a4980e010ce7
 # ╠═74428e50-7739-4d92-84bf-f7e355c63128
@@ -4118,17 +4143,20 @@ version = "4.1.0+0"
 # ╠═bcd3aa5c-f42c-4300-bdee-67a6e4154497
 # ╠═177940b1-781b-43e2-a300-091c00313b6f
 # ╠═85978b71-25df-4aa1-93d1-4a236b6f2110
+# ╟─3db655ff-4d88-4165-a8ec-e49141bd6d7e
 # ╟─b5231b36-ac16-4451-aba8-bb31652e903e
 # ╠═5b702c30-d19a-4391-99ba-cc1b0173c1ad
 # ╟─59913f9e-3a75-4a98-b7e0-2d4702453f48
+# ╟─a08e1c6f-14d4-4d50-ad4f-9682e0780af8
 # ╟─37ee5ec0-7264-49de-96ac-948fbafbf0e1
 # ╠═4203bd1f-61e4-401f-8c5b-e4c4b3c1d95b
 # ╠═8e24417d-8e8c-41ec-b2c7-0a19b518e1c4
 # ╠═d611bde5-5c88-4069-975c-92f2d1f354f1
 # ╠═4e8037ea-3aab-424a-b0be-f4e7b1e048ac
 # ╠═93b8c0d7-d7f9-4d53-9209-fe21d3113aef
-# ╠═d483b892-e4db-4207-b427-284d024fa7a8
+# ╟─d483b892-e4db-4207-b427-284d024fa7a8
 # ╠═14bc747c-3bf8-4831-a7ea-dda24200ff0d
+# ╟─1a6d3e16-753f-47b5-9e05-6405dfd6dfa0
 # ╟─49fb6e38-b545-466f-aa84-fcf41e3c1607
 # ╟─978f5dfa-ad45-4982-b451-d4afbd430530
 # ╠═9a083aa8-d7df-479a-9b3c-6d83812d7930
@@ -4156,8 +4184,8 @@ version = "4.1.0+0"
 # ╠═5c3cc925-4873-4d90-9911-a9dc927c9228
 # ╠═c3dbf98a-a629-4188-abe2-9d8792b0f8f5
 # ╠═c0c1651b-9343-439a-b4c1-d5c37cbdf494
-# ╠═3d6beb54-a1e1-4373-b759-d335a0a73e54
-# ╠═1d0f5763-e7a4-4dd5-8a12-1a229c245cb8
+# ╟─3d6beb54-a1e1-4373-b759-d335a0a73e54
+# ╟─1d0f5763-e7a4-4dd5-8a12-1a229c245cb8
 # ╟─1c868eb8-988d-469a-a0d5-4e640030afdc
 # ╠═9e246b82-e6b2-4e70-9d04-29a3ad8ccc26
 # ╟─663bf708-3587-4b89-9310-6762ad6a7fc4
