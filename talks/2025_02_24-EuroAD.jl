@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.5
 
+#> [frontmatter]
+#> title = "AD in the wild: Experiences from both implementing and applying AD in Julia for HPC"
+#> date = "2025-04-04"
+#> description = "27th EuroAD Workshop, Kaiserslautern"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

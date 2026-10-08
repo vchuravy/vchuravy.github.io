@@ -6,6 +6,7 @@
 #> date = "2025-02-25"
 #> license = "MIT"
 #> tags = ["Differentiable Programming in Julia with Enzyme"]
+#> description = "SE | deRSE25, Karlsruhe"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"
