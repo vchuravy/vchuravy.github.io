@@ -6,9 +6,12 @@ ORCID: [0000-0002-9033-165X](https://orcid.org/0000-0002-9033-165X) · Google Sc
 
 Entries marked **[first author]** have Churavy as first author.
 
-## Journal & conference papers (25)
+## Journal & conference papers (27)
 
 ### 2026
+
+- A. Seth, J. Kump, A. Nolan, M. Schanen, S. Brus, S. H. K. Narayanan, L. Van Roekel, B. Nadiga, P. Heimbach, V. **Churavy**, and W. S. Moses, "Portable, High-Performance and Differentiable Ocean Simulations with Unstructured Grids in Julia", *SC26-W: Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis (HPC4EES)*, 2026. — _Accepted; to appear November 2026_
+- W. S. Moses, G. Cheng, V. **Churavy**, M. Gelbrecht, M. Klöwer, J. Kump, M. Morlighem, S. Williamson, D. Apte, P. Berg, M. Giordano, C. Hill, N. Loose, A. Montoison, S. H. K. Narayanan, A. Pal, M. Schanen, S. Silvestri, G. Wagner, and P. Heimbach, "A Compiler-First Planetary Compute Engine: Automatic differentiable and performance portable Earth System Modeling", *PROPL 2026 (Workshop on Programming for the Planet) at PLDI 2026, Boulder*, 2026. [link](https://pldi26.sigplan.org/details/propl-2026-papers/2/A-Compiler-First-Planetary-Compute-Engine-Automatic-differentiable-and-performance-p) — _Position paper_
 
 - A. Babbar, V. **Churavy**, M. Schlottke-Lakemper, and H. Ranocha, "Automatic differentiation for performing the Cauchy-Kovalevskaya procedure in Lax-Wendroff type discretizations", *Journal of Computational Physics*, 2026. [doi:10.1016/j.jcp.2026.115101](https://doi.org/10.1016/j.jcp.2026.115101) · [arXiv:2506.11719](https://arxiv.org/abs/2506.11719) — _arXiv/SSRN preprint title: "Automatic differentiation for Lax-Wendroff-type discretizations" (2025)_
 - W. S. Moses, G. Cheng, V. **Churavy**, M. Gelbrecht, M. Klöwer, J. Kump, M. Morlighem, S. Williamson, D. Apte, P. Berg, M. Giordano, C. Hill, N. Loose, A. Montoison, S. H. K. Narayanan, A. Pal, M. Schanen, S. Silvestri, G. Wagner, and P. Heimbach, "DJ4Earth: Differentiable, and Performance-Portable Earth System Modeling via Program Transformations", *Journal of Advances in Modeling Earth Systems*, 2026. [doi:10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615) — _Preprint: ESS Open Archive, doi:10.22541/essoar.176314951.18114616 (2025)_

@@ -22,6 +22,7 @@
 
 Slides and notebooks for recent talks are at [/talks/](/talks/). Further recent talks:
 
+* [Well-Posed but Ill-Conditioned: Picking an AD Abstraction Level -- 29th EuroAD Workshop, Cambridge 2026](https://cambridge-iccs.github.io/euroad29/programme.html)
 * [Debugging Julia on a low level: rr, segfaults etc. -- Julia User Group Mainz 2026](https://github.com/ranocha/Julia_User_Group_Mainz)
 * [Automated memory management with Garbage Collection in Julia -- Julia User Group Mainz 2025](https://github.com/ranocha/Julia_User_Group_Mainz)
 * Julia/RSE hands-on -- SPP 2256 Workshop on Software Development, Augsburg 2025
