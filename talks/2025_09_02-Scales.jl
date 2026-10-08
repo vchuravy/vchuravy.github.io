@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.17
 
+#> [frontmatter]
+#> title = "Scaling Julia up for HPC"
+#> date = "2025-09-02"
+#> description = "SCALES 2025, Mainz"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

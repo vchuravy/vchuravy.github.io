@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v1.0.1
 
+#> [frontmatter]
+#> title = "Automatic Differentiation for Scientific Computing"
+#> date = "2026-06-18"
+#> description = "Summer School on HPC Driving AI, Heilbronn"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
@@ -42,7 +51,7 @@ html"""
 <h1> Automatic differentiation for Scientific Computing</h1>
 
 <div style="text-align: center;">
-Jun 18th 2025 <br>
+Jun 18th 2026 <br>
 Summer School on HPC Driving AI
 <br><br>
 Valentin Churavy

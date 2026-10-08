@@ -148,12 +148,24 @@ function hfun_talks()
     info = JSON.Parser.parsefile("talks/pluto_export.json")
     notebooks = info["notebooks"]
 
-    io = IOBuffer()
-    for (file, data) in notebooks
+    entries = map(collect(notebooks)) do (file, data)
        dir = first(split(file, "."))
-       title = data["frontmatter"]["title"]
-       clean_title = replace(title, "_" => " ")
-       write(io, "- [$clean_title](/talks/$dir)\n")
+       fm = get(data, "frontmatter", Dict())
+       title = strip(replace(get(fm, "title", dir), "_" => " "))
+       date = get(fm, "date", "")
+       desc = get(fm, "description", "")
+       (; dir, title, date, desc)
+    end
+    # newest first, undated notebooks last
+    sort!(entries, by = e -> e.date, rev = true)
+
+    io = IOBuffer()
+    for e in entries
+       line = "- "
+       isempty(e.date) || (line *= "$(e.date): ")
+       line *= "[$(e.title)](/talks/$(e.dir))"
+       isempty(e.desc) || (line *= " -- $(e.desc)")
+       write(io, line, "\n")
     end
     r = Franklin.fd2html(String(take!(io)), internal=true)
     return r

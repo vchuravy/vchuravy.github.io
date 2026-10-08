@@ -5,7 +5,7 @@
 #> title = "Performance Engineering in Julia"
 #> date = "2026-09-11"
 #> license = "MIT"
-#> description = "Guest lecture, University of Illinois Urbana-Champaign"
+#> description = "Guest lecture, UIUC CS 598 APE (online)"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

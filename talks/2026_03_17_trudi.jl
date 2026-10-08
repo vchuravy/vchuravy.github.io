@@ -2,10 +2,11 @@
 # v0.20.24
 
 #> [frontmatter]
-#> title = "Performance Analysis with Julia for Trixi.jl "
+#> title = "Performance Analysis with Julia for Trixi.jl"
 #> date = "2026-03-17"
 #> tags = ["module1", "track_performance"]
 #> License = "MIT"
+#> description = "TRUDI 2026, Cologne"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

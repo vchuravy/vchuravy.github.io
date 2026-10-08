@@ -4,6 +4,8 @@
 #> [frontmatter]
 #> title = "Summer of Programming Languages: Julia"
 #> license = "MIT"
+#> date = "2025-08-06"
+#> description = "Helmholtz HiRSE Summer of Programming Languages (video)"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.23
 
+#> [frontmatter]
+#> title = "A Guided Tour Through the JuliaGPU Ecosystem"
+#> date = "2026-03-06"
+#> description = "SIAM PP26, Berlin"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
