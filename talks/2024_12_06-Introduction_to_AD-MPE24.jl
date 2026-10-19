@@ -2,10 +2,11 @@
 # v0.19.42
 
 #> [frontmatter]
-#> title = "01 -- Introduction to Julia"
+#> title = "Differentiable Programming in Julia with Enzyme"
 #> date = "2024-06-11"
 #> license = "MIT"
 #> tags = ["Differentiable Programming in Julia with Enzyme"]
+#> description = "Minitutorial, SIAM MPE24, Portland (OR)"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

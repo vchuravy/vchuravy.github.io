@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.19
 
+#> [frontmatter]
+#> title = "Automatic differentiation with Stochastic Rounding in Julia"
+#> date = "2025-12-09"
+#> description = "28th EuroAD Workshop, CERN, Geneva"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

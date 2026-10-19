@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.19
 
+#> [frontmatter]
+#> title = "Differentiable programming for scientific computing with Enzyme and Julia"
+#> date = "2025-11-13"
+#> description = "Naval Postgraduate School, Monterey (CA)"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

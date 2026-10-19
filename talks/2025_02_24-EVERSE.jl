@@ -2,8 +2,9 @@
 # v0.20.6
 
 #> [frontmatter]
-#> title = " Julia on GPUs for fun and profit"
+#> title = "Julia on GPUs for fun and profit"
 #> date = "2025-06-11"
+#> description = "CERN Compute & Accelerator Forum (online)"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

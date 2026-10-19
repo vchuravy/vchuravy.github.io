@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.19
 
+#> [frontmatter]
+#> title = "Performance Engineering in Julia"
+#> date = "2025-10-01"
+#> description = "Guest lecture, UIUC CS 598 APE (online)"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

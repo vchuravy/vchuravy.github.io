@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.17
 
+#> [frontmatter]
+#> title = "Differentiable programming for scientific computing with Enzyme and Julia"
+#> date = "2025-09-03"
+#> description = "ICCS ML Coupling Workshop, Cambridge (UK)"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

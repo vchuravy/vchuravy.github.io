@@ -5,6 +5,7 @@
 #> title = "Delving into Julia"
 #> date = "2025-07-23"
 #> tags = ["module5", "track_performance"]
+#> description = "Invited talk, RPTU Kaiserslautern-Landau"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

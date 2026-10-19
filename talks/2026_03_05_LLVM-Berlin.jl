@@ -5,7 +5,7 @@
 #> title = "A random walk through Julia's compiler"
 #> date = "2026-03-05"
 #> license = "MIT"
-#> description = "LLVM user meeting Berlin"
+#> description = "LLVM Social Berlin"
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"

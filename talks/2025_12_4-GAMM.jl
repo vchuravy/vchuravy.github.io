@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.19
 
+#> [frontmatter]
+#> title = "Julia for Research Software Engineering"
+#> date = "2025-12-04"
+#> description = "GAMM RSE & RDM Kickoff, Braunschweig"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
