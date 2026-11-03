@@ -1,2 +1,5 @@
 __site
 Manifest.toml
+pluto_state_cache
+talks/*/
+talks/pluto_export.json

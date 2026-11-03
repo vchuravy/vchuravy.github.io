@@ -18,39 +18,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         persist-credentials: false
     # NOTE: Python is necessary for the pre-rendering (minification) step
     - name: Install python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.8'
+        python-version: '3.12'
     - name: Install Julia
-      uses: julia-actions/setup-julia@v1
+      uses: julia-actions/setup-julia@v2
       with:
         version: "1.11"
     - name: Cache Julia artifacts & such
-      uses: julia-actions/cache@v1
+      uses: julia-actions/cache@v2
       with:
         cache-registries: "true"
     # We set up a folder that Pluto can use to cache exported notebooks. If the notebook file did not change, then Pluto can take the exported file from cache instead of running the notebook.
     - name: Set up notebook state cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
           path: pluto_state_cache
-          key: ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest.toml', '.github/workflows/*' ) }}-${{ hashFiles('talks/*jl') }}
+          key: ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest*.toml', '.github/workflows/*' ) }}-${{ hashFiles('talks/*jl') }}
           restore-keys: |
-              ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest.toml', '.github/workflows/*' ) }}
+              ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest*.toml', '.github/workflows/*' ) }}
     - run: julia --project=. -e 'using Pkg; Pkg.instantiate();'
-    - run: julia --project=. -e '
-            import PlutoSliderServer
-
-            PlutoSliderServer.export_directory(
-              "talks";
-              Export_cache_dir="pluto_state_cache",
-              Export_baked_notebookfile=false,
-            )'
+    - run: julia --project=. export_talks.jl
+      env:
+        # The runner has 4 cores and 16 GB; several notebooks are heavy.
+        PLUTO_PARALLEL_TASKS: "2"
     # NOTE
     #   The steps below ensure that NodeJS and Franklin are loaded then it
     #   installs highlight.js which is needed for the prerendering step

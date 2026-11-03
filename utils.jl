@@ -145,7 +145,7 @@ function hfun_talks()
     if !isfile(pluto_json)
         return ""
     end
-    info = JSON.Parser.parsefile("talks/pluto_export.json")
+    info = JSON.parsefile("talks/pluto_export.json")
     notebooks = info["notebooks"]
 
     entries = map(collect(notebooks)) do (file, data)
