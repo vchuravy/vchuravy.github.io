@@ -58,6 +58,11 @@ function export_notebooks(dir, notebooks)
     end)
     """
 
+    # Make local exports behave like CI for notebooks that use Python: use a
+    # non-GUI matplotlib backend and ignore `pip install --user` packages.
+    ENV["MPLBACKEND"] = "Agg"
+    ENV["PYTHONNOUSERSITE"] = "1"
+
     # Each export rewrites `pluto_export.json` with only its own notebooks, so
     # keep the entries of the other Julia versions.
     index_path = joinpath(dir, "pluto_export.json")
