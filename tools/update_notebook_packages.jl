@@ -13,14 +13,10 @@ end
 import Pkg
 Pkg.instantiate()
 
-# The notebook keeps the Julia version it is updated with, and CI exports it
-# with that version if it is one of JULIA_VERSIONS (see export_talks.jl).
-ci_versions = let m = match(r"JULIA_VERSIONS: \"([^\"]+)\"", read(".github/workflows/Deploy.yml", String))
-    VersionNumber.(split(m[1]))
-end
-if VersionNumber(VERSION.major, VERSION.minor) ∉ ci_versions
-    @warn "CI exports with Julia $(join(ci_versions, ", ")), but this is Julia $(VERSION); these notebooks will run on Julia $(last(ci_versions))"
-end
+# The notebooks are exported with the Julia version they are updated with
+# (see export_talks.jl), so run this with the Julia version you want them on,
+# e.g. `julia +1.12 --project=. tools/update_notebook_packages.jl MINOR foo`.
+@info "Updating notebook environments for Julia $(VERSION)"
 
 import Pluto
 
