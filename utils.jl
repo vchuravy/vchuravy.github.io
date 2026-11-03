@@ -192,7 +192,7 @@ function talk_citation(dir)
     (isempty(title) || title == dir) && return nothing
 
     date  = get(fm, "date", "")
-    venue = get(fm, "description", "")
+    venue = get(fm, "venue", get(fm, "description", ""))
     year  = let m = match(r"\d{4}", date); m === nothing ? "" : m.match end
 
     authors = map(a -> a["name"], get(fm, "author", Dict[]))

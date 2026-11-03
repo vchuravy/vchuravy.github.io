@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.8
 
+#> [frontmatter]
+#> title = "The Euler-Lagrange equations"
+#> date = "2025-05-16"
+#> no_citation = true
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

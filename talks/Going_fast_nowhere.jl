@@ -6,6 +6,7 @@
 #> date = "2023-10-12"
 #> license = "MIT"
 #> description = "A talk about benchmarking and surprising subtilities"
+#> venue = "CAAPS Connect: Julia, Augsburg"
 #> tags = ["talks", "benchmarking", "BenchmarkTools", "low-level", "julia"]
 #> 
 #>     [[frontmatter.author]]

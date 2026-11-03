@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.19.37
 
+#> [frontmatter]
+#> title = "Liveness analysis on Julia IR"
+#> date = "2024-01-25"
+#> no_citation = true
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

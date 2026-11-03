@@ -1,6 +1,14 @@
 ### A Pluto.jl notebook ###
 # v0.19.30
 
+#> [frontmatter]
+#> title = "A random walk through Julia"
+#> date = "2023-10-12"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

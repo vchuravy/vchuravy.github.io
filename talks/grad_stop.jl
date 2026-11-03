@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.13
 
+#> [frontmatter]
+#> title = "Reproducing Fig. 1 of openreview.net/forum?id=bozbTTWcaw"
+#> date = "2025-07-18"
+#> no_citation = true
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 

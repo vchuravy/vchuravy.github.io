@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.20.21
 
+#> [frontmatter]
+#> title = "Gradients of the Lorenz 63 system"
+#> date = "2026-02-23"
+#> no_citation = true
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Valentin Churavy"
+#>     url = "https://vchuravy.dev"
+
 using Markdown
 using InteractiveUtils
 
