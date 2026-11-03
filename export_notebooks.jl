@@ -1,5 +1,7 @@
-# Export the Pluto notebooks in `talks/` to static HTML.
-# Usage: julia --project=. export_talks.jl
+# Export the Pluto notebooks in `talks/` and `notes/` to static HTML:
+# `talks/foo.jl` becomes `talks/foo/index.html`, and
+# `notes/2024/01/foo.jl` becomes `notes/2024/01/foo/index.html`.
+# Usage: julia --project=. export_notebooks.jl
 #
 # Pluto runs notebooks with the Julia version of the export process, so each
 # notebook is exported with the Julia version its embedded manifest was made
@@ -18,23 +20,24 @@
 #   BENCHMARK_SAMPLES      BenchmarkTools maximum number of samples (default: 100)
 
 # Everything lives in a module: Pluto evaluates code in `Main` of this process.
-module ExportTalks
+module ExportNotebooks
 
 # Set by `export_all` for the per-version export processes.
-const CHILD = haskey(ENV, "EXPORT_TALKS_NOTEBOOKS")
+const CHILD = haskey(ENV, "EXPORT_NOTEBOOKS")
 if CHILD
     import PlutoSliderServer, JSON
 end
 
+const DIRS = ["talks", "notes"]
 const MIN_JULIA = v"1.10"
 const DEFAULT_JULIA = v"1.11"
 
 minor(v::VersionNumber) = VersionNumber(v.major, v.minor)
 channel(v::VersionNumber) = "$(v.major).$(v.minor)"
 
-function export_notebooks(notebooks)
+function export_notebooks(dir, notebooks)
     this_version = minor(VERSION)
-    @info "Exporting with Julia $(VERSION)" notebooks
+    @info "Exporting with Julia $(VERSION)" dir notebooks
 
     parallel_tasks = let n = get(ENV, "PLUTO_PARALLEL_TASKS", "")
         isempty(n) ? nothing : parse(Int, n)
@@ -54,13 +57,13 @@ function export_notebooks(notebooks)
     end)
     """
 
-    # Each export rewrites `talks/pluto_export.json` with only its own
-    # notebooks, so keep the entries of the other Julia versions.
-    index_path = joinpath("talks", "pluto_export.json")
+    # Each export rewrites `pluto_export.json` with only its own notebooks, so
+    # keep the entries of the other Julia versions.
+    index_path = joinpath(dir, "pluto_export.json")
     previous_index = isfile(index_path) ? JSON.parsefile(index_path) : nothing
 
     PlutoSliderServer.export_directory(
-        "talks";
+        dir;
         notebook_paths=notebooks,
         Export_cache_dir=joinpath("pluto_state_cache", channel(this_version)),
         Export_baked_notebookfile=false,
@@ -71,7 +74,7 @@ function export_notebooks(notebooks)
     if previous_index !== nothing
         index = JSON.parsefile(index_path)
         for (path, entry) in previous_index["notebooks"]
-            if !haskey(index["notebooks"], path) && isfile(joinpath("talks", path))
+            if !haskey(index["notebooks"], path) && isfile(joinpath(dir, path))
                 index["notebooks"][path] = entry
             end
         end
@@ -94,43 +97,59 @@ function ensure_julia(v)
     success(`juliaup add $(channel(v))`) && works()
 end
 
+is_notebook(path) = endswith(path, ".jl") && startswith(read(path, String), "### A Pluto.jl notebook ###")
+
+# Notebook paths relative to `dir`: the top level of `talks/`, all of `notes/`.
+function find_notebooks(dir)
+    paths = if dir == "talks"
+        readdir(dir)
+    else
+        [relpath(joinpath(root, f), dir) for (root, _, files) in walkdir(dir) for f in files]
+    end
+    filter(p -> is_notebook(joinpath(dir, p)), paths)
+end
+
 function export_all()
-    groups = Dict{VersionNumber,Vector{String}}()
-    for f in readdir("talks")
-        endswith(f, ".jl") || continue
-        v = notebook_julia_version(joinpath("talks", f))
+    groups = Dict{VersionNumber,Vector{Pair{String,String}}}()
+    for dir in DIRS, path in find_notebooks(dir)
+        v = notebook_julia_version(joinpath(dir, path))
         if v != DEFAULT_JULIA && !ensure_julia(v)
-            @warn "Cannot install Julia $(channel(v)), exporting $f with Julia $(channel(DEFAULT_JULIA))"
+            @warn "Cannot install Julia $(channel(v)), exporting $dir/$path with Julia $(channel(DEFAULT_JULIA))"
             v = DEFAULT_JULIA
         end
-        push!(get!(groups, v, String[]), f)
+        push!(get!(groups, v, Pair{String,String}[]), dir => path)
     end
     ensure_julia(DEFAULT_JULIA) || error("Cannot install Julia $(channel(DEFAULT_JULIA))")
 
     for v in sort!(collect(keys(groups)))
         julia = julia_cmd(v)
         run(`$julia --project=. -e 'import Pkg; Pkg.instantiate()'`)
-        run(addenv(`$julia --project=. $(PROGRAM_FILE)`, "EXPORT_TALKS_NOTEBOOKS" => join(groups[v], "\n")))
+        for dir in DIRS
+            paths = [p for (d, p) in groups[v] if d == dir]
+            isempty(paths) && continue
+            run(addenv(`$julia --project=. $(PROGRAM_FILE)`,
+                "EXPORT_NOTEBOOKS" => join(paths, "\n"), "EXPORT_NOTEBOOKS_DIR" => dir))
+        end
     end
 
-    # Add the citation meta tags and the "Cite this talk" box to every exported
-    # notebook. Franklin expands `{{citetalk_meta}}` and `{{citetalk}}` (see
+    # Add the citation meta tags and the "Cite this talk/note" box to every
+    # exported notebook. Franklin expands `{{cite_meta}}` and `{{cite}}` (see
     # `utils.jl`) when it copies the HTML into `__site`.
-    for dir in readdir("talks"; join=true)
-        html = joinpath(dir, "index.html")
-        isfile(html) && isfile(dir * ".jl") || continue
+    for dir in DIRS, path in find_notebooks(dir)
+        html = joinpath(dir, splitext(path)[1], "index.html")
+        isfile(html) || continue
         s = read(html, String)
-        occursin("{{citetalk}}", s) && continue
-        s = replace(s, "</head>" => "{{citetalk_meta}}</head>"; count=1)
+        occursin("{{cite}}", s) && continue
+        s = replace(s, "</head>" => "{{cite_meta}}</head>"; count=1)
         i = findlast("</body>", s)
-        i === nothing || (s = s[1:prevind(s, first(i))] * "{{citetalk}}" * s[first(i):end])
+        i === nothing || (s = s[1:prevind(s, first(i))] * "{{cite}}" * s[first(i):end])
         write(html, s)
     end
 end
 
 function main()
     if CHILD
-        export_notebooks(String.(split(ENV["EXPORT_TALKS_NOTEBOOKS"], "\n")))
+        export_notebooks(ENV["EXPORT_NOTEBOOKS_DIR"], String.(split(ENV["EXPORT_NOTEBOOKS"], "\n")))
     else
         export_all()
     end
@@ -138,4 +157,4 @@ end
 
 end # module
 
-ExportTalks.main()
+ExportNotebooks.main()

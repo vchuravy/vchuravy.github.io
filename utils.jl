@@ -16,6 +16,27 @@ function lx_baz(com, _)
 end
 
 """
+    notebook_notes(ys, ms)
+
+The Pluto notebooks in `notes/<ys>/<ms>/` as `(; title, url, date)`, read from
+the frontmatter in `notes/pluto_export.json` (written by `export_notebooks.jl`).
+"""
+function notebook_notes(ys, ms)
+    index = joinpath("notes", "pluto_export.json")
+    isfile(index) || return []
+    notes = []
+    for (file, data) in JSON.parsefile(index)["notebooks"]
+        startswith(file, "$ys/$ms/") || continue
+        fm    = get(data, "frontmatter", Dict())
+        name  = splitext(file)[1]
+        title = get(fm, "title", basename(name))
+        date  = Date(get(fm, "date", "$ys-$ms-01"))
+        push!(notes, (; title, url="/notes/$name/", date))
+    end
+    return notes
+end
+
+"""
     {{notes}}
 
 Plug in the list of notes contained in the `/notes/` folder.
@@ -49,6 +70,10 @@ function hfun_notes()
                 end
                 lines[i] = "\n[$title]($url) $date \n"
             end
+            for nb in notebook_notes(ys, ms)
+                push!(lines, "\n[$(nb.title)]($(nb.url)) $(nb.date) \n")
+                push!(days, day(nb.date))
+            end
             # sort by day
             foreach(line -> write(io, line), lines[sortperm(days, rev=true)])
         end
@@ -68,27 +93,28 @@ function hfun_recentnotes()
     curyear = Dates.Year(Dates.today()).value
     ntofind = 3
     nfound  = 0
-    recent  = Vector{Pair{String,Date}}(undef, ntofind)
+    recent  = Vector{Any}(undef, ntofind)
     for year in curyear:-1:2019
         for month in 12:-1:1
             ms = "0"^(1-div(month, 10)) * "$month"
             base = joinpath("notes", "$year", "$ms")
             isdir(base) || continue
             posts = filter!(p -> endswith(p, ".md"), readdir(base))
-            days  = zeros(Int, length(posts))
-            surls = Vector{String}(undef, length(posts))
-            for (i, post) in enumerate(posts)
-                ps       = splitext(post)[1]
-                surl     = "notes/$year/$ms/$ps"
-                surls[i] = surl
-                pubdate  = pagevar(surl, :published)
-                days[i]  = isnothing(pubdate) ?
-                                1 : day(Date(pubdate, dateformat"d U Y"))
+            entries = Any[]
+            for post in posts
+                surl    = "notes/$year/$ms/$(splitext(post)[1])"
+                pubdate = pagevar(surl, :published)
+                d       = isnothing(pubdate) ? 1 : day(Date(pubdate, dateformat"d U Y"))
+                title   = pagevar(surl, :title)
+                push!(entries, (; url="/$surl/", title=something(title, "Untitled"),
+                                  date=Date(year, month, d), blurb=pagevar(surl, :rss)))
+            end
+            for nb in notebook_notes("$year", ms)
+                push!(entries, (; nb..., blurb=nb.title))
             end
             # go over month post in antichronological orders
-            sp = sortperm(days, rev=true)
-            for (i, surl) in enumerate(surls[sp])
-                recent[nfound + 1] = (surl => Date(year, month, days[sp[i]]))
+            for entry in sort!(entries, by=e -> e.date, rev=true)
+                recent[nfound + 1] = entry
                 nfound += 1
                 nfound == ntofind && break
             end
@@ -98,12 +124,7 @@ function hfun_recentnotes()
     end
     resize!(recent, nfound)
     io = IOBuffer()
-    for (surl, date) in recent
-        url   = "/$surl/"
-        title = pagevar(surl, :title)
-        title === nothing && (title = "Untitled")
-        sdate = "$(day(date)) $(monthname(date)) $(year(date))"
-        blurb = pagevar(surl, :rss)
+    for (; url, title, date, blurb) in recent
         write(io, """
             <div class="col-lg-4 col-md-12 blog">
               <h3><a href="$url" class="title" data-proofer-ignore>$title</a>
@@ -172,30 +193,13 @@ function hfun_talks()
 end
 
 """
-    talk_citation(dir)
+    make_citation(; title, date, venue, authors, url_path)
 
-Citation data for the talk exported to `/talks/<dir>/`, read from the Pluto
-frontmatter in `talks/pluto_export.json`. Returns `nothing` if the notebook
-has no explicit title or sets `no_citation = true`.
+Citation data for the page at `/<url_path>/`: the fields of the inline
+citation and the BibTeX entry.
 """
-function talk_citation(dir)
-    pluto_json = "talks/pluto_export.json"
-    isfile(pluto_json) || return nothing
-    notebooks = JSON.parsefile(pluto_json)["notebooks"]
-    data = get(notebooks, "$dir.jl", nothing)
-    data === nothing && return nothing
-    fm = get(data, "frontmatter", Dict())
-    get(fm, "no_citation", false) == true && return nothing
-
-    # PlutoSliderServer falls back to the file name if no title is set
-    title = strip(get(fm, "title", ""))
-    (isempty(title) || title == dir) && return nothing
-
-    date  = get(fm, "date", "")
-    venue = get(fm, "venue", get(fm, "description", ""))
-    year  = let m = match(r"\d{4}", date); m === nothing ? "" : m.match end
-
-    authors = map(a -> a["name"], get(fm, "author", Dict[]))
+function make_citation(; title, date, venue, authors, url_path)
+    year = let m = match(r"\d{4}", date); m === nothing ? "" : m.match end
     isempty(authors) && (authors = [globvar(:author)])
 
     # BibTeX author field: "Last, First and Last, First"
@@ -205,25 +209,96 @@ function talk_citation(dir)
     end, " and ")
 
     # BibTeX citation key: firstauthorlastname + year + urlslug
-    slug = lowercase(replace(dir, r"[^a-zA-Z0-9]" => ""))
+    slug = lowercase(replace(basename(url_path), r"[^a-zA-Z0-9]" => ""))
     key  = "$(lowercase(last(split(first(authors)))))$(year):$(slug)"
 
-    url = rstrip(globvar(:website_url), '/') * "/talks/$dir/"
+    url = rstrip(globvar(:website_url), '/') * "/$url_path/"
 
     return (; title, date, year, venue, authors, author_bibtex, key, url)
 end
 
-talk_dir() = basename(dirname(locvar(:fd_rpath)))
+"""
+    notebook_citation(section, path)
+
+Citation data for the notebook `<section>/<path>.jl` exported to
+`/<section>/<path>/`, read from the Pluto frontmatter in
+`<section>/pluto_export.json`. Returns `nothing` if the notebook has no
+explicit title or sets `no_citation = true`.
+"""
+function notebook_citation(section, path)
+    pluto_json = joinpath(section, "pluto_export.json")
+    isfile(pluto_json) || return nothing
+    notebooks = JSON.parsefile(pluto_json)["notebooks"]
+    data = get(notebooks, "$path.jl", nothing)
+    data === nothing && return nothing
+    fm = get(data, "frontmatter", Dict())
+    get(fm, "no_citation", false) == true && return nothing
+
+    # PlutoSliderServer falls back to the file name if no title is set
+    title = strip(get(fm, "title", ""))
+    (isempty(title) || title == basename(path)) && return nothing
+
+    return make_citation(;
+        title,
+        date    = get(fm, "date", ""),
+        venue   = get(fm, "venue", get(fm, "description", "")),
+        authors = map(a -> a["name"], get(fm, "author", Dict[])),
+        url_path = "$section/$path",
+    )
+end
 
 """
-    {{citetalk_meta}}
+    note_citation(path)
 
-Highwire Press `citation_*` meta tags for an exported talk notebook.
-Inserted into the `<head>` of `talks/<dir>/index.html` by `export_talks.jl`.
+Citation data for the Markdown note `notes/<path>.md`, from its `title` and
+`date` page variables. Returns `nothing` if it sets `no_citation = true`.
 """
-function hfun_citetalk_meta()
-    c = talk_citation(talk_dir())
-    c === nothing && return ""
+function note_citation(path)
+    locvar(:no_citation) == true && return nothing
+    title = locvar(:title)
+    title === nothing && return nothing
+    date = locvar(:date)
+    return make_citation(;
+        title,
+        date     = date isa Date ? string(date) : "",
+        venue    = "",
+        authors  = String[],
+        url_path = "notes/$path",
+    )
+end
+
+"""
+    page_citation()
+
+`(kind, citation)` for the current page if it is a talk, a note notebook or a
+dated Markdown note (`notes/YYYY/MM/foo.md`), otherwise `nothing`.
+"""
+function page_citation()
+    rpath = locvar(:fd_rpath)
+    m = match(r"^(talks|notes)/(.+)/index\.html$", rpath)
+    if m !== nothing
+        c = notebook_citation(m[1], m[2])
+        kind = m[1] == "talks" ? "talk" : "note"
+    else
+        m = match(r"^notes/(\d{4}/\d{2}/[^/]+)\.md$", rpath)
+        m === nothing && return nothing
+        c = note_citation(m[1])
+        kind = "note"
+    end
+    return c === nothing ? nothing : (kind, c)
+end
+
+"""
+    {{cite_meta}}
+
+Highwire Press `citation_*` meta tags for talks and notes. Part of
+`_layout/head.html`, and inserted into the `<head>` of exported notebooks by
+`export_notebooks.jl`.
+"""
+function hfun_cite_meta()
+    pc = page_citation()
+    pc === nothing && return ""
+    _, c = pc
     io = IOBuffer()
     write(io, "<meta name=\"citation_title\" content=\"$(Franklin.htmlesc(c.title))\" />\n")
     for name in c.authors
@@ -235,15 +310,16 @@ function hfun_citetalk_meta()
 end
 
 """
-    {{citetalk}}
+    {{cite}}
 
-"Cite this talk" box with an inline citation and a BibTeX entry for an
-exported talk notebook. Appended to `talks/<dir>/index.html` by
-`export_talks.jl`.
+"Cite this talk/note" box with an inline citation and a BibTeX entry. Part of
+`_layout/page_foot.html`, and appended to exported notebooks by
+`export_notebooks.jl`.
 """
-function hfun_citetalk()
-    c = talk_citation(talk_dir())
-    c === nothing && return ""
+function hfun_cite()
+    pc = page_citation()
+    pc === nothing && return ""
+    kind, c = pc
 
     venue_inline = isempty(c.venue) ? "" : " $(c.venue)."
     inline_cite = "$(join(c.authors, ", ")). ($(c.year)). $(c.title).$(venue_inline) $(c.url)"
@@ -260,9 +336,9 @@ function hfun_citetalk()
     return """
         <link rel="stylesheet" href="/css/citation.css">
         <div class="citation">
-            <h2>Cite this talk</h2>
+            <h2>Cite this $(kind)</h2>
             <p>$(Franklin.htmlesc(inline_cite))</p>
-            <pre><code>$(Franklin.htmlesc(bibtex))</code></pre>
+            <pre><code class="language-plaintext">$(Franklin.htmlesc(bibtex))</code></pre>
         </div>
         """
 end

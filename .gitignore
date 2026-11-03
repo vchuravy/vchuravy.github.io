@@ -3,3 +3,5 @@ Manifest.toml
 pluto_state_cache
 talks/*/
 talks/pluto_export.json
+notes/*/*/*/
+notes/pluto_export.json

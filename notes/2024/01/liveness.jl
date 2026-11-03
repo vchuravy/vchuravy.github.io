@@ -4,7 +4,6 @@
 #> [frontmatter]
 #> title = "Liveness analysis on Julia IR"
 #> date = "2024-01-25"
-#> no_citation = true
 #> 
 #>     [[frontmatter.author]]
 #>     name = "Valentin Churavy"
