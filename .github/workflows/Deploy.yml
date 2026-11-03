@@ -16,6 +16,10 @@ permissions:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      JULIA_VERSIONS: "1.10 1.11"
+      # The runner has 4 cores and 16 GB; several notebooks are heavy.
+      PLUTO_PARALLEL_TASKS: "2"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -26,10 +30,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Install Julia
+    # Notebooks run on the Julia version of their embedded manifest if it is
+    # listed here, otherwise on the last one; see export_talks.jl.
+    - name: Install Julia 1.10
       uses: julia-actions/setup-julia@v2
       with:
-        version: "1.11"
+        version: "1.10"
     - name: Cache Julia artifacts & such
       uses: julia-actions/cache@v2
       with:
@@ -42,11 +48,18 @@ jobs:
           key: ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest*.toml', '.github/workflows/*' ) }}-${{ hashFiles('talks/*jl') }}
           restore-keys: |
               ${{ runner.os }}-pluto_state_cache-v2-${{ hashFiles('**/Project.toml', '**/Manifest*.toml', '.github/workflows/*' ) }}
-    - run: julia --project=. -e 'using Pkg; Pkg.instantiate();'
-    - run: julia --project=. export_talks.jl
-      env:
-        # The runner has 4 cores and 16 GB; several notebooks are heavy.
-        PLUTO_PARALLEL_TASKS: "2"
+    - name: Export notebooks with Julia 1.10
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        julia --project=. export_talks.jl
+    - name: Install Julia 1.11
+      uses: julia-actions/setup-julia@v2
+      with:
+        version: "1.11"
+    - name: Export notebooks with Julia 1.11
+      run: |
+        julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        julia --project=. export_talks.jl
     # NOTE
     #   The steps below ensure that NodeJS and Franklin are loaded then it
     #   installs highlight.js which is needed for the prerendering step
