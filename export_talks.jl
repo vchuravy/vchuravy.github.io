@@ -77,3 +77,17 @@ if previous_index !== nothing
     end
     write(index_path, JSON.json(index))
 end
+
+# Add the citation meta tags and the "Cite this talk" box to every exported
+# notebook. Franklin expands `{{citetalk_meta}}` and `{{citetalk}}` (see
+# `utils.jl`) when it copies the HTML into `__site`.
+for dir in readdir("talks"; join=true)
+    html = joinpath(dir, "index.html")
+    isfile(html) && isfile(dir * ".jl") || continue
+    s = read(html, String)
+    occursin("{{citetalk}}", s) && continue
+    s = replace(s, "</head>" => "{{citetalk_meta}}</head>"; count=1)
+    i = findlast("</body>", s)
+    i === nothing || (s = s[1:prevind(s, first(i))] * "{{citetalk}}" * s[first(i):end])
+    write(html, s)
+end

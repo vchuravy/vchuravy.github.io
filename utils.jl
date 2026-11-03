@@ -170,3 +170,99 @@ function hfun_talks()
     r = Franklin.fd2html(String(take!(io)), internal=true)
     return r
 end
+
+"""
+    talk_citation(dir)
+
+Citation data for the talk exported to `/talks/<dir>/`, read from the Pluto
+frontmatter in `talks/pluto_export.json`. Returns `nothing` if the notebook
+has no explicit title or sets `no_citation = true`.
+"""
+function talk_citation(dir)
+    pluto_json = "talks/pluto_export.json"
+    isfile(pluto_json) || return nothing
+    notebooks = JSON.parsefile(pluto_json)["notebooks"]
+    data = get(notebooks, "$dir.jl", nothing)
+    data === nothing && return nothing
+    fm = get(data, "frontmatter", Dict())
+    get(fm, "no_citation", false) == true && return nothing
+
+    # PlutoSliderServer falls back to the file name if no title is set
+    title = strip(get(fm, "title", ""))
+    (isempty(title) || title == dir) && return nothing
+
+    date  = get(fm, "date", "")
+    venue = get(fm, "description", "")
+    year  = let m = match(r"\d{4}", date); m === nothing ? "" : m.match end
+
+    authors = map(a -> a["name"], get(fm, "author", Dict[]))
+    isempty(authors) && (authors = [globvar(:author)])
+
+    # BibTeX author field: "Last, First and Last, First"
+    author_bibtex = join(map(authors) do name
+        parts = split(name)
+        length(parts) >= 2 ? "$(last(parts)), $(join(parts[1:end-1], " "))" : name
+    end, " and ")
+
+    # BibTeX citation key: firstauthorlastname + year + urlslug
+    slug = lowercase(replace(dir, r"[^a-zA-Z0-9]" => ""))
+    key  = "$(lowercase(last(split(first(authors)))))$(year):$(slug)"
+
+    url = rstrip(globvar(:website_url), '/') * "/talks/$dir/"
+
+    return (; title, date, year, venue, authors, author_bibtex, key, url)
+end
+
+talk_dir() = basename(dirname(locvar(:fd_rpath)))
+
+"""
+    {{citetalk_meta}}
+
+Highwire Press `citation_*` meta tags for an exported talk notebook.
+Inserted into the `<head>` of `talks/<dir>/index.html` by `export_talks.jl`.
+"""
+function hfun_citetalk_meta()
+    c = talk_citation(talk_dir())
+    c === nothing && return ""
+    io = IOBuffer()
+    write(io, "<meta name=\"citation_title\" content=\"$(Franklin.htmlesc(c.title))\" />\n")
+    for name in c.authors
+        write(io, "<meta name=\"citation_author\" content=\"$(Franklin.htmlesc(name))\" />\n")
+    end
+    isempty(c.date) || write(io, "<meta name=\"citation_publication_date\" content=\"$(replace(c.date, "-" => "/"))\" />\n")
+    write(io, "<meta name=\"citation_public_url\" content=\"$(c.url)\" />\n")
+    return String(take!(io))
+end
+
+"""
+    {{citetalk}}
+
+"Cite this talk" box with an inline citation and a BibTeX entry for an
+exported talk notebook. Appended to `talks/<dir>/index.html` by
+`export_talks.jl`.
+"""
+function hfun_citetalk()
+    c = talk_citation(talk_dir())
+    c === nothing && return ""
+
+    venue_inline = isempty(c.venue) ? "" : " $(c.venue)."
+    inline_cite = "$(join(c.authors, ", ")). ($(c.year)). $(c.title).$(venue_inline) $(c.url)"
+
+    venue_field = isempty(c.venue) ? "" : "\n  howpublished = {$(c.venue)},"
+    date_field  = isempty(c.date)  ? "" : "\n  date         = {$(c.date)},"
+    bibtex = """@misc{$(c.key),
+      author       = {$(c.author_bibtex)},
+      title        = {$(c.title)},$(venue_field)
+      year         = {$(c.year)},$(date_field)
+      url          = {$(c.url)},
+    }"""
+
+    return """
+        <link rel="stylesheet" href="/css/citation.css">
+        <div class="citation">
+            <h2>Cite this talk</h2>
+            <p>$(Franklin.htmlesc(inline_cite))</p>
+            <pre><code>$(Franklin.htmlesc(bibtex))</code></pre>
+        </div>
+        """
+end
