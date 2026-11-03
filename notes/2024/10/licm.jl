@@ -4,6 +4,7 @@
 #> [frontmatter]
 #> title = "Manual LICM in Julia"
 #> date = "2024-10-29"
+#> julia_version = "1.10"
 #> license = "MIT"
 #> 
 #>     [[frontmatter.author]]

@@ -8,7 +8,8 @@
 # with: this script groups the notebooks by that version, installs the
 # versions with juliaup, and runs one export per version.
 #
-# - Notebooks without a manifest use DEFAULT_JULIA.
+# - A `julia_version = "1.10"` in the frontmatter overrides the manifest.
+# - Notebooks without either use DEFAULT_JULIA.
 # - Notebooks made with a Julia older than MIN_JULIA (the oldest that Pluto 1
 #   supports) use MIN_JULIA.
 # - If juliaup cannot install a version (e.g. an unreleased one), the
@@ -82,8 +83,12 @@ function export_notebooks(dir, notebooks)
     end
 end
 
+# A `julia_version` in the frontmatter takes precedence over the manifest, for
+# notebooks that manage their packages themselves and have no manifest.
 function notebook_julia_version(path)
-    m = match(r"^julia_version = \"([^\"]+)\""m, read(path, String))
+    s = read(path, String)
+    m = match(r"^#> julia_version = \"([^\"]+)\""m, s)
+    m === nothing && (m = match(r"^julia_version = \"([^\"]+)\""m, s))
     m === nothing && return DEFAULT_JULIA
     return max(minor(VersionNumber(m[1])), MIN_JULIA)
 end
